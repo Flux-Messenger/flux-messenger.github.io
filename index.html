@@ -36,129 +36,25 @@
   </script>
 
   <style>
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(51, 65, 85, 0.8);
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(71, 85, 105, 1);
-    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
     
-    /* Subtle Glassmorphism */
     .glass {
       background: rgba(30, 41, 59, 0.7);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
-
-    .message-bubble-out {
-      border-bottom-right-radius: 2px;
-    }
-    .message-bubble-in {
-      border-bottom-left-radius: 2px;
-    }
-
-    .msg-bubble, .chat-item-node {
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-
-    /* Pulse animation for call screen */
-    @keyframes pulse-ring {
-      0% { transform: scale(0.95); opacity: 0.8; }
-      50% { transform: scale(1.1); opacity: 0.4; }
-      100% { transform: scale(0.95); opacity: 0.8; }
-    }
-    .animate-pulse-ring {
-      animation: pulse-ring 2s infinite ease-in-out;
-    }
+    .message-bubble-out { border-bottom-right-radius: 2px; }
+    .message-bubble-in { border-bottom-left-radius: 2px; }
+    .msg-bubble, .chat-item-node { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   </style>
 </head>
 <body class="h-full overflow-hidden antialiased font-sans flex flex-col bg-slate-950 text-slate-100 selection:bg-blue-500 selection:text-white" onclick="closeContextMenu(); closeChatHeaderMenu();">
 
-  <!-- ================= AUDIO ELEMENT FOR REMOTE STREAM ================= -->
-  <audio id="remote-audio" autoplay></audio>
-
-  <!-- ================= FULLSCREEN CALL OVERLAY ================= -->
-  <div id="call-overlay" class="fixed inset-0 z-50 flex flex-col justify-between items-center p-8 bg-slate-950/95 backdrop-blur-2xl hidden transition-all duration-300 select-none">
-    
-    <!-- Background Ambient Blur Circles -->
-    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-ring"></div>
-    <div class="absolute bottom-1/4 left-1/2 -translate-x-1/2 translate-y-1/2 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-ring"></div>
-
-    <!-- Top Status / Call Info -->
-    <div class="relative z-10 text-center mt-8">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs text-blue-400 font-medium mb-3">
-        <i class="fa-solid fa-lock text-[10px]"></i> Защищённый P2P звонок
-      </div>
-      <p id="call-status-text" class="text-sm font-medium text-slate-400">Входящий звонок...</p>
-      <p id="call-timer-text" class="text-xl font-mono font-bold text-emerald-400 mt-1 hidden">00:00</p>
-    </div>
-
-    <!-- Center User Avatar & Info -->
-    <div class="relative z-10 flex flex-col items-center justify-center my-auto">
-      <div class="relative mb-6">
-        <div id="call-avatar-ring" class="absolute -inset-4 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 opacity-30 blur-md animate-pulse"></div>
-        <img id="call-user-avatar" src="https://placehold.co/150x150/3b82f6/ffffff?text=U" class="relative w-36 h-36 md:w-44 md:h-44 rounded-full object-cover border-4 border-slate-800 shadow-2xl">
-      </div>
-      <h2 id="call-user-name" class="text-2xl md:text-3xl font-bold text-white tracking-wide text-center">Собеседник</h2>
-      <p id="call-user-subtext" class="text-sm text-slate-400 mt-1">Flux Voice Call</p>
-    </div>
-
-    <!-- Bottom Controls Bar -->
-    <div class="relative z-10 w-full max-w-sm mb-6">
-      
-      <!-- INCOMING CALL CONTROLS (Reject / Accept) -->
-      <div id="incoming-call-controls" class="flex items-center justify-between px-6">
-        <!-- Reject Button (Bottom Left) -->
-        <button onclick="rejectIncomingCall()" class="flex flex-col items-center gap-2 group">
-          <div class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-red-600/30 transition transform group-active:scale-90">
-            <i class="fa-solid fa-phone-slash"></i>
-          </div>
-          <span class="text-xs font-semibold text-slate-300">Отклонить</span>
-        </button>
-
-        <!-- Accept Button (Bottom Right) -->
-        <button onclick="acceptIncomingCall()" class="flex flex-col items-center gap-2 group">
-          <div class="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-emerald-600/30 transition transform group-active:scale-90 animate-bounce">
-            <i class="fa-solid fa-phone"></i>
-          </div>
-          <span class="text-xs font-semibold text-slate-300">Ответить</span>
-        </button>
-      </div>
-
-      <!-- ACTIVE CALL CONTROLS (Mic / End / Speaker) -->
-      <div id="active-call-controls" class="hidden flex items-center justify-between px-4">
-        <!-- Toggle Mic (Left) -->
-        <button id="toggle-mic-btn" onclick="toggleMicrophone()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center text-xl shadow-lg transition active:scale-95" title="Микрофон">
-          <i id="mic-icon" class="fa-solid fa-microphone"></i>
-        </button>
-
-        <!-- End Call (Center) -->
-        <button onclick="endActiveCall()" class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-red-600/30 transition transform active:scale-90" title="Завершить">
-          <i class="fa-solid fa-phone-slash"></i>
-        </button>
-
-        <!-- Toggle Speaker / Output (Right) -->
-        <button id="toggle-speaker-btn" onclick="toggleSpeaker()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center text-xl shadow-lg transition active:scale-95" title="Громкоговоритель">
-          <i id="speaker-icon" class="fa-solid fa-volume-high"></i>
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ================= AUTH MODAL / OVERLAY ================= -->
+  <!-- ================= AUTH MODAL ================= -->
   <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-opacity duration-300 hidden">
     <div class="glass w-full max-w-md p-8 rounded-2xl shadow-2xl border border-slate-800 text-center relative overflow-hidden" onclick="event.stopPropagation()">
       <div class="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -230,10 +126,8 @@
   <!-- ================= MAIN APP CONTAINER ================= -->
   <div class="flex-1 flex overflow-hidden relative">
 
-    <!-- LEFT PANEL: CHAT LIST & USER BAR -->
+    <!-- LEFT PANEL: CHATS -->
     <div id="chats-panel" class="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-800/80 flex flex-col bg-slate-900/60 backdrop-blur-md z-10">
-      
-      <!-- Current User Top Bar (Clickable) -->
       <div onclick="openMyProfileModal()" class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 cursor-pointer hover:bg-slate-800/50 transition">
         <div class="flex items-center space-x-3 overflow-hidden">
           <div class="relative flex-shrink-0">
@@ -265,7 +159,6 @@
           <i class="fa-solid fa-circle-notch fa-spin text-xl mb-2 text-blue-500"></i>
           <p>Загрузка чатов...</p>
         </div>
-
         <div id="chats-empty" class="hidden p-8 text-center text-slate-500 text-sm flex flex-col items-center justify-center h-64">
           <div class="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-3 text-slate-600">
             <i class="fa-solid fa-comments text-2xl"></i>
@@ -282,7 +175,6 @@
 
     <!-- RIGHT PANEL: CHAT WINDOW -->
     <div id="chat-window-panel" class="hidden md:flex flex-1 bg-slate-950 flex-col absolute inset-0 md:static z-20">
-      
       <div id="no-chat-selected" class="flex flex-1 flex-col items-center justify-center text-center p-6 text-slate-500 bg-slate-950">
         <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 text-blue-500/80 shadow-inner">
           <i class="fa-solid fa-paper-plane text-3xl"></i>
@@ -292,7 +184,6 @@
       </div>
 
       <div id="active-chat-container" class="flex-1 flex flex-col h-full hidden">
-        
         <!-- Partner Top Header -->
         <div class="px-4 py-3 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 relative z-30">
           <div onclick="openPartnerProfileModal()" class="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition flex-1 min-w-0 pr-2">
@@ -308,19 +199,17 @@
             </div>
           </div>
           
-          <!-- Header Actions (Call & Menu) -->
-          <div class="flex items-center space-x-2 flex-shrink-0">
+          <div class="flex items-center gap-2">
             <!-- Audio Call Button -->
-            <button onclick="startOutgoingCall()" class="w-9 h-9 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center transition active:scale-95" title="Позвонить">
+            <button onclick="startAudioCall()" class="w-9 h-9 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition" title="Аудиозвонок">
               <i class="fa-solid fa-phone text-sm"></i>
             </button>
 
-            <!-- 3 dots menu -->
-            <div class="relative">
+            <!-- Header Options Menu -->
+            <div class="relative flex-shrink-0">
               <button onclick="toggleChatHeaderMenu(event)" class="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
                 <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
               </button>
-
               <div id="chat-header-menu" class="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl py-1 hidden z-50">
                 <button onclick="openPartnerProfileModal()" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-700/80 flex items-center gap-2 transition">
                   <i class="fa-solid fa-user text-slate-400"></i> Профиль собеседника
@@ -353,206 +242,190 @@
           </button>
         </div>
 
-        <!-- Chat Bottom Input Bar with Attachment Button -->
+        <!-- Message Input Bar -->
         <div class="p-3 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md flex-shrink-0 relative z-10">
           <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-2 w-full mx-auto">
-            <!-- Hidden File Input -->
             <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleImageSelection(event)">
-            
-            <!-- Attachment Button (Paperclip) -->
             <button type="button" onclick="document.getElementById('file-input').click()" class="w-11 h-11 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl flex items-center justify-center transition flex-shrink-0" title="Прикрепить картинку">
               <i class="fa-solid fa-paperclip text-base"></i>
             </button>
-
             <input type="text" id="message-input" autocomplete="off" placeholder="Напишите сообщение..." class="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors">
-            
             <button type="submit" id="send-msg-btn" class="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20 transition transform active:scale-95 flex-shrink-0">
               <i id="send-btn-icon" class="fa-solid fa-paper-plane text-base"></i>
             </button>
           </form>
         </div>
-
       </div>
-
     </div>
-
   </div>
 
-  <!-- ================= MY PROFILE EDIT MODAL ================= -->
+  <!-- ================= P2P FULLSCREEN CALL OVERLAY ================= -->
+  <div id="call-overlay" class="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-between p-8 hidden">
+    <!-- Background glow elements -->
+    <div class="absolute -top-20 -left-20 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute -bottom-20 -right-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <!-- Top info -->
+    <div class="text-center z-10 pt-6">
+      <p id="call-status-label" class="text-sm font-semibold tracking-widest uppercase text-blue-400 mb-1">Звонок...</p>
+      <div id="call-timer" class="text-xs text-slate-400 hidden font-mono">00:00</div>
+    </div>
+
+    <!-- Center profile info -->
+    <div class="flex flex-col items-center space-y-4 z-10 my-auto">
+      <div class="relative">
+        <img id="call-avatar" src="https://placehold.co/150x150/3b82f6/ffffff?text=U" class="w-32 h-32 rounded-full object-cover border-4 border-blue-500/40 shadow-2xl animate-pulse">
+        <div id="call-pulse-ring" class="absolute inset-0 rounded-full border-4 border-blue-500/30 animate-ping pointer-events-none"></div>
+      </div>
+      <div class="text-center">
+        <h2 id="call-name" class="text-2xl font-bold text-white tracking-wide">Имя собеседника</h2>
+        <p id="call-subtitle" class="text-sm text-slate-400 mt-1">Входящий аудиовызов</p>
+      </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="w-full max-w-sm flex items-center justify-around z-10 pb-6">
+      <!-- Mute mic button (visible when connected) -->
+      <button id="call-btn-mute" onclick="toggleMuteMic()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg hidden" title="Выключить микрофон">
+        <i id="call-icon-mute" class="fa-solid fa-microphone"></i>
+      </button>
+
+      <!-- Decline / Hang up button -->
+      <button onclick="hangUpCall()" class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-2xl transition shadow-xl shadow-red-600/30 active:scale-95" title="Сбросить">
+        <i class="fa-solid fa-phone-slash"></i>
+      </button>
+
+      <!-- Speaker button (visible when connected) -->
+      <button id="call-btn-speaker" onclick="toggleSpeaker()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg hidden" title="Динамик">
+        <i id="call-icon-speaker" class="fa-solid fa-volume-high"></i>
+      </button>
+
+      <!-- Answer button (visible on incoming call) -->
+      <button id="call-btn-answer" onclick="answerIncomingCall()" class="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-2xl transition shadow-xl shadow-emerald-600/30 active:scale-95 hidden" title="Ответить">
+        <i class="fa-solid fa-phone"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Hidden audio element for remote WebRTC stream -->
+  <audio id="remote-audio" autoplay></audio>
+
+  <!-- ================= OTHER MODALS ================= -->
+  <!-- MY PROFILE MODAL -->
   <div id="profile-edit-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden" onclick="closeMyProfileModal()">
     <div class="glass w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col" onclick="event.stopPropagation()">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-        <h3 class="font-bold text-white text-base flex items-center gap-2">
-          <i class="fa-solid fa-user-gear text-blue-400"></i> Мой профиль
-        </h3>
-        <button onclick="closeMyProfileModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+        <h3 class="font-bold text-white text-base flex items-center gap-2"><i class="fa-solid fa-user-gear text-blue-400"></i> Мой профиль</h3>
+        <button onclick="closeMyProfileModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-
       <form onsubmit="handleSaveProfile(event)" class="p-5 space-y-4 bg-slate-900/40">
-        
-        <!-- Avatar Section -->
         <div class="flex flex-col items-center justify-center space-y-3 pb-2">
           <div class="relative group">
             <img id="edit-profile-avatar-preview" src="https://placehold.co/100x100/3b82f6/ffffff?text=U" class="w-24 h-24 rounded-full object-cover border-2 border-blue-500 shadow-xl">
-            <label for="profile-avatar-input" class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer text-white text-sm font-medium">
-              <i class="fa-solid fa-camera text-xl"></i>
-            </label>
+            <label for="profile-avatar-input" class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer text-white text-sm font-medium"><i class="fa-solid fa-camera text-xl"></i></label>
             <input type="file" id="profile-avatar-input" accept="image/*" class="hidden" onchange="handleProfileAvatarUpload(event)">
           </div>
-          
           <div class="flex gap-2">
-            <button type="button" onclick="document.getElementById('profile-avatar-input').click()" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700">
-              Изменить фото
-            </button>
-            <button type="button" id="reset-google-photo-btn" onclick="resetAvatarToGooglePhoto()" class="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition">
-              Фото из Google
-            </button>
+            <button type="button" onclick="document.getElementById('profile-avatar-input').click()" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition border border-slate-700">Изменить фото</button>
+            <button type="button" onclick="resetAvatarToGooglePhoto()" class="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition">Фото из Google</button>
           </div>
         </div>
-
         <div>
           <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Имя пользователя</label>
           <input type="text" id="edit-profile-name" required placeholder="Ваше имя" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
         </div>
-
         <div>
           <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">О себе (Био)</label>
           <textarea id="edit-profile-bio" rows="3" placeholder="Расскажите немного о себе..." class="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"></textarea>
         </div>
-
         <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Email (Данные аккаунта)</label>
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Email</label>
           <input type="email" id="edit-profile-email" disabled class="w-full bg-slate-900 border border-slate-800 text-slate-500 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed">
         </div>
-
         <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
-          <button type="button" onclick="closeMyProfileModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm transition">
-            Отмена
-          </button>
-          <button type="submit" id="save-profile-btn" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm transition shadow-lg shadow-blue-600/20 active:scale-[0.98]">
-            Сохранить
-          </button>
+          <button type="button" onclick="closeMyProfileModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm transition">Отмена</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm transition shadow-lg shadow-blue-600/20 active:scale-[0.98]">Сохранить</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ================= PARTNER PROFILE VIEW MODAL ================= -->
+  <!-- PARTNER PROFILE MODAL -->
   <div id="partner-profile-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden" onclick="closePartnerProfileModal()">
     <div class="glass w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col" onclick="event.stopPropagation()">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-        <h3 class="font-bold text-white text-base flex items-center gap-2">
-          <i class="fa-solid fa-address-card text-indigo-400"></i> Профиль пользователя
-        </h3>
-        <button onclick="closePartnerProfileModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+        <h3 class="font-bold text-white text-base flex items-center gap-2"><i class="fa-solid fa-address-card text-indigo-400"></i> Профиль пользователя</h3>
+        <button onclick="closePartnerProfileModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-
       <div class="p-6 space-y-5 bg-slate-900/40 text-center">
         <div class="flex justify-center">
           <img id="partner-view-avatar" src="https://placehold.co/100x100/3b82f6/ffffff?text=U" class="w-28 h-28 rounded-full object-cover border-4 border-slate-800 shadow-xl cursor-pointer hover:scale-105 transition" onclick="openImageModal(this.src)">
         </div>
-
         <div>
           <h2 id="partner-view-name" class="text-xl font-bold text-white">Имя пользователя</h2>
           <p id="partner-view-email" class="text-xs text-slate-400 mt-0.5">email@example.com</p>
         </div>
-
         <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800/80 text-left">
           <span class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Био</span>
           <p id="partner-view-bio" class="text-sm text-slate-200 whitespace-pre-wrap italic">Информация отсутствует</p>
         </div>
-
-        <div class="pt-2">
-          <button onclick="closePartnerProfileModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm transition">
-            Закрыть
-          </button>
-        </div>
+        <div class="pt-2"><button onclick="closePartnerProfileModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm transition">Закрыть</button></div>
       </div>
     </div>
   </div>
 
-  <!-- ================= IMAGE LIGHTBOX MODAL ================= -->
+  <!-- IMAGE LIGHTBOX -->
   <div id="image-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md hidden p-4" onclick="closeImageModal()">
     <div class="relative max-w-4xl max-h-full flex items-center justify-center" onclick="event.stopPropagation()">
-      <button onclick="closeImageModal()" class="absolute -top-12 left-0 md:-left-12 w-10 h-10 bg-slate-800 hover:bg-slate-700 text-white rounded-full flex items-center justify-center shadow-lg transition">
-        <i class="fa-solid fa-xmark text-lg"></i>
-      </button>
-      <a id="modal-download-btn" href="#" target="_blank" download class="absolute -top-12 right-0 md:-right-12 w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg transition" title="Скачать картинку">
-        <i class="fa-solid fa-download text-sm"></i>
-      </a>
+      <button onclick="closeImageModal()" class="absolute -top-12 left-0 md:-left-12 w-10 h-10 bg-slate-800 hover:bg-slate-700 text-white rounded-full flex items-center justify-center shadow-lg transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <a id="modal-download-btn" href="#" target="_blank" download class="absolute -top-12 right-0 md:-right-12 w-10 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg transition" title="Скачать"><i class="fa-solid fa-download text-sm"></i></a>
       <img id="modal-image-element" src="" class="max-h-[85vh] max-w-full rounded-xl object-contain shadow-2xl border border-slate-800">
     </div>
   </div>
 
-  <!-- ================= EDIT MESSAGE MODAL ================= -->
+  <!-- EDIT MESSAGE MODAL -->
   <div id="edit-message-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden" onclick="closeEditModal()">
     <div class="glass w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col" onclick="event.stopPropagation()">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-        <h3 class="font-bold text-white text-base flex items-center gap-2">
-          <i class="fa-solid fa-pen text-amber-400 text-sm"></i> Редактировать сообщение
-        </h3>
-        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+        <h3 class="font-bold text-white text-base flex items-center gap-2"><i class="fa-solid fa-pen text-amber-400 text-sm"></i> Редактировать сообщение</h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-
       <form onsubmit="handleSaveEditedMessage(event)" class="p-4 space-y-4 bg-slate-900/40">
         <div>
           <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Текст сообщения</label>
-          <textarea id="edit-message-input" rows="4" required placeholder="Введите текст сообщения..." class="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"></textarea>
+          <textarea id="edit-message-input" rows="4" required placeholder="Введите текст..." class="w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none"></textarea>
         </div>
-
         <div class="flex items-center justify-end space-x-3 pt-2">
-          <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm transition">
-            Отмена
-          </button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm transition shadow-lg shadow-blue-600/20 active:scale-[0.98]">
-            Сохранить
-          </button>
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm transition">Отмена</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-sm transition shadow-lg shadow-blue-600/20 active:scale-[0.98]">Сохранить</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ================= CONTEXT MENU ================= -->
+  <!-- CONTEXT MENU -->
   <div id="context-menu" class="fixed z-50 w-48 bg-slate-800/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-xl p-1.5 hidden flex-col space-y-0.5 text-xs">
-    <button id="menu-reply-btn" onclick="executeMenuAction('reply')" class="flex items-center gap-2 px-3 py-2 text-slate-200 hover:bg-slate-700/70 rounded-lg transition w-full text-left">
-      <i class="fa-solid fa-reply text-blue-400"></i> Ответить
-    </button>
-    <button id="menu-edit-btn" onclick="executeMenuAction('edit')" class="flex items-center gap-2 px-3 py-2 text-slate-200 hover:bg-slate-700/70 rounded-lg transition w-full text-left">
-      <i class="fa-solid fa-pen text-amber-400"></i> Изменить
-    </button>
-    <button id="menu-delete-btn" onclick="executeMenuAction('delete')" class="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition w-full text-left">
-      <i class="fa-solid fa-trash"></i> Удалить сообщение
-    </button>
-    <button id="menu-delete-chat-btn" onclick="executeMenuAction('deleteChat')" class="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition w-full text-left">
-      <i class="fa-solid fa-trash-can"></i> Удалить чат
-    </button>
+    <button id="menu-reply-btn" onclick="executeMenuAction('reply')" class="flex items-center gap-2 px-3 py-2 text-slate-200 hover:bg-slate-700/70 rounded-lg transition w-full text-left"><i class="fa-solid fa-reply text-blue-400"></i> Ответить</button>
+    <button id="menu-edit-btn" onclick="executeMenuAction('edit')" class="flex items-center gap-2 px-3 py-2 text-slate-200 hover:bg-slate-700/70 rounded-lg transition w-full text-left"><i class="fa-solid fa-pen text-amber-400"></i> Изменить</button>
+    <button id="menu-delete-btn" onclick="executeMenuAction('delete')" class="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition w-full text-left"><i class="fa-solid fa-trash"></i> Удалить сообщение</button>
+    <button id="menu-delete-chat-btn" onclick="executeMenuAction('deleteChat')" class="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition w-full text-left"><i class="fa-solid fa-trash-can"></i> Удалить чат</button>
   </div>
 
-  <!-- ================= NEW CHAT MODAL ================= -->
+  <!-- NEW CHAT MODAL -->
   <div id="new-chat-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden" onclick="closeNewChatModal()">
     <div class="glass w-full max-w-md rounded-2xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[80vh]" onclick="event.stopPropagation()">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
         <h3 class="font-bold text-white text-base">Новый чат</h3>
-        <button onclick="closeNewChatModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
+        <button onclick="closeNewChatModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800 transition"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-
       <div class="p-4 border-b border-slate-800/60 bg-slate-900/40">
         <div class="relative">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
           <input type="text" id="user-search-input" oninput="handleUserSearch()" placeholder="Поиск по имени или email..." class="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors">
         </div>
       </div>
-
       <div id="search-results" class="flex-1 overflow-y-auto p-2 space-y-1 divide-y divide-slate-800/30">
-        <div class="text-center py-8 text-slate-500 text-xs">Введите имя или email для поиска пользователей</div>
+        <div class="text-center py-8 text-slate-500 text-xs">Введите имя или email для поиска</div>
       </div>
     </div>
   </div>
@@ -561,29 +434,12 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
-      getAuth, 
-      createUserWithEmailAndPassword, 
-      signInWithEmailAndPassword, 
-      signOut, 
-      onAuthStateChanged,
-      GoogleAuthProvider,
-      signInWithPopup,
-      updateProfile
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+      signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, updateProfile
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
-      getFirestore, 
-      doc, 
-      setDoc, 
-      getDoc, 
-      getDocs, 
-      collection, 
-      addDoc, 
-      query, 
-      where, 
-      onSnapshot, 
-      serverTimestamp,
-      updateDoc,
-      deleteDoc
+      getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, 
+      query, where, onSnapshot, serverTimestamp, updateDoc, deleteDoc, setLogLevel
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -610,6 +466,7 @@
     let chatsUnsubscribe = null;
     let messagesUnsubscribe = null;
     let userProfileUnsubscribe = null;
+    let globalCallUnsubscribe = null;
     let allUsersCache = [];
 
     let activeContextMenuTarget = null;
@@ -617,28 +474,24 @@
     let longPressTimer = null;
     let newAvatarUrlTemp = null;
 
-    /* ================= WebRTC & Call Variables ================= */
+    // WebRTC & Call Variables
     let peerConnection = null;
     let localStream = null;
-    let remoteStream = null;
-    let activeCallDocId = null;
-    let incomingCallUnsubscribe = null;
-    let activeCallDocUnsubscribe = null;
-    let activeCallOfferCandidatesUnsub = null;
-    let activeCallAnswerCandidatesUnsub = null;
+    let currentCallId = null;
+    let callState = 'idle'; // 'idle', 'ringing_incoming', 'ringing_outgoing', 'connecting', 'connected'
     let callTimerInterval = null;
-    let callSecondsCount = 0;
+    let callSeconds = 0;
     let isMicMuted = false;
-    let isSpeakerMuted = false;
+    let isSpeakerOn = true;
 
-    // Public STUN servers for WebRTC NAT traversal
-    const rtcConfiguration = {
+    const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' }
       ]
     };
 
+    // Expose globals
     window.switchAuthTab = switchAuthTab;
     window.handleAuthSubmit = handleAuthSubmit;
     window.handleGoogleSignIn = handleGoogleSignIn;
@@ -659,14 +512,10 @@
     window.cancelActionState = cancelActionState;
     window.openImageModal = openImageModal;
     window.closeImageModal = closeImageModal;
-    
-    // Header Menu & Chat Delete
     window.toggleChatHeaderMenu = toggleChatHeaderMenu;
     window.closeChatHeaderMenu = closeChatHeaderMenu;
     window.deleteActiveChat = deleteActiveChat;
     window.deleteChatById = deleteChatById;
-
-    // Profile functions
     window.openMyProfileModal = openMyProfileModal;
     window.closeMyProfileModal = closeMyProfileModal;
     window.handleProfileAvatarUpload = handleProfileAvatarUpload;
@@ -675,12 +524,11 @@
     window.openPartnerProfileModal = openPartnerProfileModal;
     window.closePartnerProfileModal = closePartnerProfileModal;
 
-    // P2P Call functions
-    window.startOutgoingCall = startOutgoingCall;
-    window.acceptIncomingCall = acceptIncomingCall;
-    window.rejectIncomingCall = rejectIncomingCall;
-    window.endActiveCall = endActiveCall;
-    window.toggleMicrophone = toggleMicrophone;
+    // Call controls
+    window.startAudioCall = startAudioCall;
+    window.answerIncomingCall = answerIncomingCall;
+    window.hangUpCall = hangUpCall;
+    window.toggleMuteMic = toggleMuteMic;
     window.toggleSpeaker = toggleSpeaker;
 
     onAuthStateChanged(auth, async (user) => {
@@ -688,22 +536,19 @@
       if (user) {
         currentUser = user;
         await syncUserProfile(user);
-
         listenToCurrentUserDoc(user.uid);
+        listenToGlobalCalls(user.uid);
 
         authOverlay.classList.add('opacity-0', 'pointer-events-none');
         setTimeout(() => authOverlay.classList.add('hidden'), 300);
-
         listenToUserChats();
-        listenToIncomingCalls();
       } else {
         currentUser = null;
         currentUserProfileData = null;
         if (chatsUnsubscribe) chatsUnsubscribe();
         if (messagesUnsubscribe) messagesUnsubscribe();
         if (userProfileUnsubscribe) userProfileUnsubscribe();
-        if (incomingCallUnsubscribe) incomingCallUnsubscribe();
-        cleanupCall();
+        if (globalCallUnsubscribe) globalCallUnsubscribe();
         authOverlay.classList.remove('hidden', 'pointer-events-none', 'opacity-0');
       }
     });
@@ -712,12 +557,11 @@
       if (!user) return;
       const userRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userRef);
-
       const defaultLetterPhoto = `https://placehold.co/100x100/3b82f6/ffffff?text=${(user.displayName || user.email || 'U')[0].toUpperCase()}`;
       const googlePhoto = user.photoURL || defaultLetterPhoto;
 
       if (!userDoc.exists()) {
-        const userData = {
+        await setDoc(userRef, {
           uid: user.uid,
           displayName: user.displayName || user.email.split('@')[0],
           email: user.email,
@@ -726,8 +570,7 @@
           defaultPhotoURL: defaultLetterPhoto,
           bio: 'Всем привет! Я использую Flux Messenger.',
           lastSeen: serverTimestamp()
-        };
-        await setDoc(userRef, userData);
+        });
       } else {
         await updateDoc(userRef, { 
           lastSeen: serverTimestamp(),
@@ -739,7 +582,6 @@
 
     function listenToCurrentUserDoc(uid) {
       if (userProfileUnsubscribe) userProfileUnsubscribe();
-      
       userProfileUnsubscribe = onSnapshot(doc(db, 'users', uid), (docSnap) => {
         if (docSnap.exists()) {
           currentUserProfileData = docSnap.data();
@@ -750,6 +592,337 @@
       });
     }
 
+    // ================= GLOBAL CALLS LISTENER =================
+    function listenToGlobalCalls(uid) {
+      if (globalCallUnsubscribe) globalCallUnsubscribe();
+
+      const callsQuery = query(
+        collection(db, 'calls'),
+        where('receiverId', '==', uid),
+        where('status', '==', 'ringing')
+      );
+
+      globalCallUnsubscribe = onSnapshot(callsQuery, async (snapshot) => {
+        if (!snapshot.empty) {
+          const callDoc = snapshot.docs[0];
+          const callData = callDoc.data();
+
+          if (callState === 'idle') {
+            currentCallId = callDoc.id;
+            callState = 'ringing_incoming';
+            
+            // Fetch caller profile info
+            let callerName = callData.callerName || 'Собеседник';
+            let callerPhoto = callData.callerPhoto || 'https://placehold.co/150x150/3b82f6/ffffff?text=U';
+
+            const callerDoc = await getDoc(doc(db, 'users', callData.callerId));
+            if (callerDoc.exists()) {
+              callerName = callerDoc.data().displayName;
+              callerPhoto = callerDoc.data().photoURL;
+            }
+
+            showIncomingCallUI(callerName, callerPhoto);
+          }
+        } else {
+          // If call was canceled remotely while ringing
+          if (callState === 'ringing_incoming') {
+            resetCallState();
+          }
+        }
+      });
+    }
+
+    // ================= WEBRTC CALL FUNCTIONS =================
+    async function startAudioCall() {
+      if (!activePartner || !currentUser) return;
+      if (callState !== 'idle') return;
+
+      try {
+        callState = 'ringing_outgoing';
+        showOutgoingCallUI(activePartner.displayName, activePartner.photoURL);
+
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+        // Create call document in Firestore
+        const callRef = await addDoc(collection(db, 'calls'), {
+          callerId: currentUser.uid,
+          callerName: currentUserProfileData?.displayName || 'Пользователь',
+          callerPhoto: currentUserProfileData?.photoURL || '',
+          receiverId: activePartner.uid,
+          status: 'ringing',
+          createdAt: serverTimestamp()
+        });
+        currentCallId = callRef.id;
+
+        createPeerConnection();
+        // Add local audio track
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        // Create WebRTC Offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        await updateDoc(callRef, {
+          offer: { type: offer.type, sdp: offer.sdp },
+          status: 'connecting'
+        });
+
+        updateCallStatusText('Соединение...');
+
+        // Listen for remote answer & ICE candidates
+        onSnapshot(callRef, async (docSnap) => {
+          if (!docSnap.exists()) {
+            hangUpCall();
+            return;
+          }
+          const data = docSnap.data();
+          if (data.status === 'declined' || data.status === 'ended') {
+            hangUpCall();
+            return;
+          }
+
+          if (data.answer && !peerConnection.currentRemoteDescription && peerConnection.signalingState === 'have-local-offer') {
+            const remoteDesc = new RTCSessionDescription(data.answer);
+            await peerConnection.setRemoteDescription(remoteDesc);
+            startCallTimer();
+          }
+
+          if (data.calleeCandidates && data.calleeCandidates.length > 0) {
+            for (const candidateData of data.calleeCandidates) {
+              try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
+              } catch (e) { console.error('Error adding ICE candidate:', e); }
+            }
+          }
+        });
+
+      } catch (err) {
+        console.error("Start Call Error:", err);
+        updateCallStatusText('Ошибка соединения');
+        setTimeout(() => hangUpCall(), 2500);
+      }
+    }
+
+    async function answerIncomingCall() {
+      if (!currentCallId) return;
+
+      try {
+        callState = 'connecting';
+        updateCallStatusText('Соединение...');
+
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+        createPeerConnection();
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        const callRef = doc(db, 'calls', currentCallId);
+        const callSnap = await getDoc(callRef);
+        if (!callSnap.exists()) {
+          hangUpCall();
+          return;
+        }
+
+        const callData = callSnap.data();
+
+        // Set remote description (Offer)
+        const remoteDesc = new RTCSessionDescription(callData.offer);
+        await peerConnection.setRemoteDescription(remoteDesc);
+
+        // Create Answer
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        await updateDoc(callRef, {
+          answer: { type: answer.type, sdp: answer.sdp },
+          status: 'connected'
+        });
+
+        // Listen for caller ICE candidates or hangup
+        onSnapshot(callRef, async (docSnap) => {
+          if (!docSnap.exists()) {
+            hangUpCall();
+            return;
+          }
+          const data = docSnap.data();
+          if (data.status === 'ended' || data.status === 'declined') {
+            hangUpCall();
+          }
+        });
+
+        startCallTimer();
+
+      } catch (err) {
+        console.error("Answer Call Error:", err);
+        updateCallStatusText('Ошибка соединения');
+        setTimeout(() => hangUpCall(), 2500);
+      }
+    }
+
+    function createPeerConnection() {
+      peerConnection = new RTCPeerConnection(rtcConfig);
+
+      peerConnection.onicecandidate = async (event) => {
+        if (event.candidate && currentCallId) {
+          const callRef = doc(db, 'calls', currentCallId);
+          const callSnap = await getDoc(callRef);
+          if (callSnap.exists()) {
+            const data = callSnap.data();
+            const isCaller = data.callerId === currentUser.uid;
+            const field = isCaller ? 'callerCandidates' : 'calleeCandidates';
+            const existing = data[field] || [];
+            await updateDoc(callRef, {
+              [field]: [...existing, event.candidate.toJSON()]
+            });
+          }
+        }
+      };
+
+      peerConnection.ontrack = (event) => {
+        const remoteAudio = document.getElementById('remote-audio');
+        remoteAudio.srcObject = event.streams[0];
+        remoteAudio.play().catch(e => console.error("Audio play error:", e));
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        if (peerConnection.connectionState === 'connected') {
+          updateCallStatusText('Разговор');
+          document.getElementById('call-pulse-ring').classList.remove('animate-ping');
+        } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+          updateCallStatusText('Ошибка соединения');
+          setTimeout(() => hangUpCall(), 2000);
+        }
+      };
+    }
+
+    async function hangUpCall() {
+      try {
+        if (currentCallId) {
+          const callRef = doc(db, 'calls', currentCallId);
+          const snap = await getDoc(callRef);
+          if (snap.exists()) {
+            await updateDoc(callRef, { status: 'ended' });
+          }
+        }
+      } catch (err) { console.error(err); }
+      resetCallState();
+    }
+
+    function resetCallState() {
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+      }
+      callSeconds = 0;
+      currentCallId = null;
+      callState = 'idle';
+      isMicMuted = false;
+      isSpeakerOn = true;
+
+      const overlay = document.getElementById('call-overlay');
+      overlay.classList.add('hidden');
+
+      // Reset UI elements inside overlay
+      document.getElementById('call-btn-answer').classList.add('hidden');
+      document.getElementById('call-btn-mute').classList.add('hidden');
+      document.getElementById('call-btn-speaker').classList.add('hidden');
+      document.getElementById('call-timer').classList.add('hidden');
+    }
+
+    // ================= CALL UI HELPERS =================
+    function showIncomingCallUI(name, photo) {
+      document.getElementById('call-name').textContent = name;
+      document.getElementById('call-avatar').src = photo;
+      document.getElementById('call-status-label').textContent = 'Входящий аудиозвонок';
+      document.getElementById('call-subtitle').textContent = 'Звонит';
+
+      document.getElementById('call-btn-answer').classList.remove('hidden');
+      document.getElementById('call-btn-mute').classList.add('hidden');
+      document.getElementById('call-btn-speaker').classList.add('hidden');
+
+      document.getElementById('call-overlay').classList.remove('hidden');
+    }
+
+    function showOutgoingCallUI(name, photo) {
+      document.getElementById('call-name').textContent = name;
+      document.getElementById('call-avatar').src = photo;
+      document.getElementById('call-status-label').textContent = 'Вызов...';
+      document.getElementById('call-subtitle').textContent = 'Исходящий аудиовызов';
+
+      document.getElementById('call-btn-answer').classList.add('hidden');
+      document.getElementById('call-btn-mute').classList.add('hidden');
+      document.getElementById('call-btn-speaker').classList.add('hidden');
+
+      document.getElementById('call-overlay').classList.remove('hidden');
+    }
+
+    function updateCallStatusText(text) {
+      document.getElementById('call-status-label').textContent = text;
+      document.getElementById('call-subtitle').textContent = text === 'Разговор' ? 'Подключено' : text;
+
+      if (text === 'Разговор') {
+        document.getElementById('call-btn-mute').classList.remove('hidden');
+        document.getElementById('call-btn-speaker').classList.remove('hidden');
+      }
+    }
+
+    function startCallTimer() {
+      callSeconds = 0;
+      const timerEl = document.getElementById('call-timer');
+      timerEl.classList.remove('hidden');
+      timerEl.textContent = '00:00';
+
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        timerEl.textContent = `${mins}:${secs}`;
+      }, 1000);
+
+      updateCallStatusText('Разговор');
+    }
+
+    function toggleMuteMic() {
+      if (!localStream) return;
+      isMicMuted = !isMicMuted;
+      localStream.getAudioTracks().forEach(track => { track.enabled = !isMicMuted; });
+
+      const muteBtn = document.getElementById('call-btn-mute');
+      const muteIcon = document.getElementById('call-icon-mute');
+      if (isMicMuted) {
+        muteBtn.className = 'w-14 h-14 rounded-full bg-red-600/30 text-red-400 border border-red-500/40 flex items-center justify-center text-xl transition shadow-lg';
+        muteIcon.className = 'fa-solid fa-microphone-slash';
+      } else {
+        muteBtn.className = 'w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg';
+        muteIcon.className = 'fa-solid fa-microphone';
+      }
+    }
+
+    function toggleSpeaker() {
+      isSpeakerOn = !isSpeakerOn;
+      const remoteAudio = document.getElementById('remote-audio');
+      remoteAudio.muted = !isSpeakerOn;
+
+      const speakerBtn = document.getElementById('call-btn-speaker');
+      const speakerIcon = document.getElementById('call-icon-speaker');
+      if (!isSpeakerOn) {
+        speakerBtn.className = 'w-14 h-14 rounded-full bg-red-600/30 text-red-400 border border-red-500/40 flex items-center justify-center text-xl transition shadow-lg';
+        speakerIcon.className = 'fa-solid fa-volume-xmark';
+      } else {
+        speakerBtn.className = 'w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg';
+        speakerIcon.className = 'fa-solid fa-volume-high';
+      }
+    }
+
+    // ================= CHATS & AUTH HELPERS =================
     function switchAuthTab(mode) {
       authMode = mode;
       const loginBtn = document.getElementById('tab-login-btn');
@@ -777,7 +950,6 @@
       const name = document.getElementById('auth-name').value;
       const errorDiv = document.getElementById('auth-error');
       const errorText = document.getElementById('auth-error-text');
-
       errorDiv.classList.add('hidden');
 
       try {
@@ -795,12 +967,9 @@
 
     async function handleGoogleSignIn() {
       const provider = new GoogleAuthProvider();
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (err) {
-        const errorDiv = document.getElementById('auth-error');
+      try { await signInWithPopup(auth, provider); } catch (err) {
         document.getElementById('auth-error-text').textContent = err.message;
-        errorDiv.classList.remove('hidden');
+        document.getElementById('auth-error').classList.remove('hidden');
       }
     }
 
@@ -811,22 +980,19 @@
         case 'auth/invalid-email': return 'Неверный формат email.';
         case 'auth/user-not-found': return 'Пользователь не найден.';
         case 'auth/wrong-password': return 'Неверный пароль.';
-        case 'auth/email-already-in-use': return 'Email уже зарегистрирован.';
+        case 'auth/email-already-in-use': return 'Email уже занят.';
         case 'auth/weak-password': return 'Пароль должен быть не менее 6 символов.';
         default: return 'Ошибка входа: ' + code;
       }
     }
 
-    /* PROFILE MODAL HANDLERS */
     function openMyProfileModal() {
       if (!currentUserProfileData) return;
       newAvatarUrlTemp = currentUserProfileData.photoURL;
-
       document.getElementById('edit-profile-name').value = currentUserProfileData.displayName || '';
       document.getElementById('edit-profile-bio').value = currentUserProfileData.bio || '';
       document.getElementById('edit-profile-email').value = currentUserProfileData.email || '';
       document.getElementById('edit-profile-avatar-preview').src = newAvatarUrlTemp;
-
       document.getElementById('profile-edit-modal').classList.remove('hidden');
     }
 
@@ -838,30 +1004,20 @@
     async function handleProfileAvatarUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
-
       const formData = new FormData();
       formData.append('image', file);
-
       try {
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-          method: 'POST',
-          body: formData
-        });
-
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
           newAvatarUrlTemp = result.data.url;
           document.getElementById('edit-profile-avatar-preview').src = newAvatarUrlTemp;
-        } else {
-          alert('Не удалось загрузить изображение.');
-        }
-      } catch (err) {
-        console.error("Avatar Upload Error:", err);
-      }
+        } else { alert('Не удалось загрузить изображение.'); }
+      } catch (err) { console.error(err); }
     }
 
     function resetAvatarToGooglePhoto() {
-      const targetPhoto = currentUserProfileData?.defaultPhotoURL || currentUserProfileData?.googlePhotoURL || `https://placehold.co/100x100/3b82f6/ffffff?text=${(currentUserProfileData?.displayName || 'U')[0].toUpperCase()}`;
+      const targetPhoto = currentUserProfileData?.defaultPhotoURL || currentUserProfileData?.googlePhotoURL || 'https://placehold.co/100x100/3b82f6/ffffff?text=U';
       newAvatarUrlTemp = targetPhoto;
       document.getElementById('edit-profile-avatar-preview').src = newAvatarUrlTemp;
     }
@@ -870,71 +1026,38 @@
       e.preventDefault();
       const newName = document.getElementById('edit-profile-name').value.trim();
       const newBio = document.getElementById('edit-profile-bio').value.trim();
-
       if (!newName || !currentUser) return;
-
       try {
         await updateProfile(auth.currentUser, { displayName: newName, photoURL: newAvatarUrlTemp });
-        
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          displayName: newName,
-          bio: newBio,
-          photoURL: newAvatarUrlTemp
-        });
-
+        await updateDoc(doc(db, 'users', currentUser.uid), { displayName: newName, bio: newBio, photoURL: newAvatarUrlTemp });
         closeMyProfileModal();
-      } catch (err) {
-        console.error("Save Profile Error:", err);
-        alert("Не удалось сохранить профиль.");
-      }
+      } catch (err) { alert('Не удалось сохранить профиль.'); }
     }
 
     async function openPartnerProfileModal() {
       if (!activePartner) return;
-      
       try {
         const partnerSnap = await getDoc(doc(db, 'users', activePartner.uid));
         const partnerData = partnerSnap.exists() ? partnerSnap.data() : activePartner;
-
         document.getElementById('partner-view-name').textContent = partnerData.displayName || 'Собеседник';
         document.getElementById('partner-view-email').textContent = partnerData.email || '';
         document.getElementById('partner-view-avatar').src = partnerData.photoURL;
         document.getElementById('partner-view-bio').textContent = partnerData.bio || 'Информация отсутствует';
-
         document.getElementById('partner-profile-modal').classList.remove('hidden');
-      } catch(err) {
-        console.error("Partner Profile Error:", err);
-      }
+      } catch(err) { console.error(err); }
     }
 
-    function closePartnerProfileModal() {
-      document.getElementById('partner-profile-modal').classList.add('hidden');
-    }
-
-    function toggleChatHeaderMenu(e) {
-      e.stopPropagation();
-      const menu = document.getElementById('chat-header-menu');
-      menu.classList.toggle('hidden');
-    }
-
-    function closeChatHeaderMenu() {
-      const menu = document.getElementById('chat-header-menu');
-      if (menu) menu.classList.add('hidden');
-    }
+    function closePartnerProfileModal() { document.getElementById('partner-profile-modal').classList.add('hidden'); }
+    function toggleChatHeaderMenu(e) { e.stopPropagation(); document.getElementById('chat-header-menu').classList.toggle('hidden'); }
+    function closeChatHeaderMenu() { const m = document.getElementById('chat-header-menu'); if (m) m.classList.add('hidden'); }
 
     function listenToUserChats() {
       if (!currentUser) return;
-
-      const chatsQuery = query(
-        collection(db, 'chats'),
-        where('participants', 'array-contains', currentUser.uid)
-      );
-
+      const chatsQuery = query(collection(db, 'chats'), where('participants', 'array-contains', currentUser.uid));
       chatsUnsubscribe = onSnapshot(chatsQuery, async (snapshot) => {
         const chatsList = document.getElementById('chats-list');
         const emptyState = document.getElementById('chats-empty');
         const loadingState = document.getElementById('chats-loading');
-
         loadingState.classList.add('hidden');
 
         if (snapshot.empty) {
@@ -942,10 +1065,7 @@
           chatsList.appendChild(emptyState);
           emptyState.classList.remove('hidden');
           document.getElementById('chats-count').textContent = '0';
-          
-          if (activeChatId) {
-            clearActiveChatView();
-          }
+          if (activeChatId) clearActiveChatView();
           return;
         }
 
@@ -956,51 +1076,22 @@
         for (const docSnap of snapshot.docs) {
           const data = docSnap.data();
           const partnerId = data.participants.find(id => id !== currentUser.uid);
-          
           let partnerData = { uid: partnerId, displayName: 'Пользователь', photoURL: 'https://placehold.co/100x100/3b82f6/ffffff?text=U' };
           if (partnerId) {
-            const partnerDoc = await getDoc(doc(db, 'users', partnerId));
-            if (partnerDoc.exists()) partnerData = partnerDoc.data();
+            const pDoc = await getDoc(doc(db, 'users', partnerId));
+            if (pDoc.exists()) partnerData = pDoc.data();
           }
-
-          chats.push({
-            id: docSnap.id,
-            partner: partnerData,
-            lastMessage: data.lastMessage || 'Сообщений пока нет',
-            updatedAt: data.updatedAt ? data.updatedAt.toDate() : new Date()
-          });
+          chats.push({ id: docSnap.id, partner: partnerData, lastMessage: data.lastMessage || 'Сообщений пока нет', updatedAt: data.updatedAt ? data.updatedAt.toDate() : new Date() });
         }
-
         chats.sort((a, b) => b.updatedAt - a.updatedAt);
-
-        if (activeChatId && !chats.some(c => c.id === activeChatId)) {
-          clearActiveChatView();
-        }
 
         chatsList.innerHTML = '';
         chats.forEach(chat => {
           const isActive = chat.id === activeChatId;
           const timeStr = chat.updatedAt ? formatTime(chat.updatedAt) : '';
-
           const item = document.createElement('div');
           item.className = `chat-item-node p-3.5 flex items-center space-x-3 cursor-pointer transition border-b border-slate-800/40 hover:bg-slate-800/40 ${isActive ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`;
           item.onclick = () => selectChat(chat.id, chat.partner);
-
-          item.oncontextmenu = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openContextMenu(e.clientX, e.clientY, { type: 'chat', chatId: chat.id });
-          };
-
-          item.ontouchstart = (e) => {
-            longPressTimer = setTimeout(() => {
-              const touch = e.touches[0];
-              openContextMenu(touch.clientX, touch.clientY, { type: 'chat', chatId: chat.id });
-            }, 500);
-          };
-          item.ontouchend = () => clearTimeout(longPressTimer);
-          item.ontouchmove = () => clearTimeout(longPressTimer);
-
           item.innerHTML = `
             <img src="${chat.partner.photoURL}" class="w-12 h-12 rounded-full object-cover border border-slate-700/60 flex-shrink-0">
             <div class="flex-1 min-w-0">
@@ -1013,54 +1104,36 @@
           `;
           chatsList.appendChild(item);
         });
-      }, (err) => console.error("Chats Listener Error:", err));
+      });
     }
 
     async function openNewChatModal() {
       document.getElementById('new-chat-modal').classList.remove('hidden');
       document.getElementById('user-search-input').value = '';
-      
       try {
         const usersSnap = await getDocs(collection(db, 'users'));
         allUsersCache = [];
-        usersSnap.forEach(docSnap => {
-          if (docSnap.id !== currentUser.uid) allUsersCache.push(docSnap.data());
-        });
+        usersSnap.forEach(docSnap => { if (docSnap.id !== currentUser.uid) allUsersCache.push(docSnap.data()); });
         renderSearchResults(allUsersCache);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-      }
+      } catch (err) { console.error(err); }
     }
 
     function closeNewChatModal() { document.getElementById('new-chat-modal').classList.add('hidden'); }
 
     function handleUserSearch() {
       const term = document.getElementById('user-search-input').value.toLowerCase().trim();
-      if (!term) {
-        renderSearchResults(allUsersCache);
-        return;
-      }
-      const filtered = allUsersCache.filter(u => 
-        (u.displayName && u.displayName.toLowerCase().includes(term)) ||
-        (u.email && u.email.toLowerCase().includes(term))
-      );
-      renderSearchResults(filtered);
+      if (!term) { renderSearchResults(allUsersCache); return; }
+      renderSearchResults(allUsersCache.filter(u => (u.displayName && u.displayName.toLowerCase().includes(term)) || (u.email && u.email.toLowerCase().includes(term))));
     }
 
     function renderSearchResults(users) {
       const resultsContainer = document.getElementById('search-results');
       resultsContainer.innerHTML = '';
-
-      if (users.length === 0) {
-        resultsContainer.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Пользователи не найдены</div>`;
-        return;
-      }
-
+      if (users.length === 0) { resultsContainer.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Пользователи не найдены</div>`; return; }
       users.forEach(user => {
         const item = document.createElement('div');
         item.className = 'p-3 flex items-center justify-between rounded-xl hover:bg-slate-800/60 cursor-pointer transition';
         item.onclick = () => startChatWithUser(user);
-
         item.innerHTML = `
           <div class="flex items-center space-x-3">
             <img src="${user.photoURL}" class="w-10 h-10 rounded-full object-cover border border-slate-700">
@@ -1077,29 +1150,14 @@
 
     async function startChatWithUser(partner) {
       closeNewChatModal();
-
-      const chatsQuery = query(
-        collection(db, 'chats'),
-        where('participants', 'array-contains', currentUser.uid)
-      );
-
+      const chatsQuery = query(collection(db, 'chats'), where('participants', 'array-contains', currentUser.uid));
       const snap = await getDocs(chatsQuery);
       let existingChatId = null;
-
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.participants.includes(partner.uid)) existingChatId = docSnap.id;
-      });
-
-      if (existingChatId) {
-        selectChat(existingChatId, partner);
-      } else {
-        const newChatRef = await addDoc(collection(db, 'chats'), {
-          participants: [currentUser.uid, partner.uid],
-          lastMessage: '',
-          updatedAt: serverTimestamp()
-        });
-        selectChat(newChatRef.id, partner);
+      snap.forEach(docSnap => { if (docSnap.data().participants.includes(partner.uid)) existingChatId = docSnap.id; });
+      if (existingChatId) { selectChat(existingChatId, partner); } 
+      else {
+        const newRef = await addDoc(collection(db, 'chats'), { participants: [currentUser.uid, partner.uid], lastMessage: '', updatedAt: serverTimestamp() });
+        selectChat(newRef.id, partner);
       }
     }
 
@@ -1108,14 +1166,8 @@
       activePartner = partner;
       cancelActionState();
 
-      const noChatEl = document.getElementById('no-chat-selected');
+      document.getElementById('no-chat-selected').classList.add('hidden', 'flex');
       const activeChatEl = document.getElementById('active-chat-container');
-      const chatsPanel = document.getElementById('chats-panel');
-      const chatWindowPanel = document.getElementById('chat-window-panel');
-      
-      noChatEl.classList.add('hidden');
-      noChatEl.classList.remove('flex');
-      
       activeChatEl.classList.remove('hidden');
       activeChatEl.classList.add('flex');
 
@@ -1123,22 +1175,20 @@
       document.getElementById('chat-header-avatar').src = partner.photoURL;
 
       if (window.innerWidth < 768) {
-        chatsPanel.classList.add('hidden');
-        chatWindowPanel.classList.remove('hidden');
-        chatWindowPanel.classList.add('flex');
+        document.getElementById('chats-panel').classList.add('hidden');
+        const chatWin = document.getElementById('chat-window-panel');
+        chatWin.classList.remove('hidden');
+        chatWin.classList.add('flex');
       }
-
       listenToMessages(chatId);
     }
 
     function closeActiveChatMobile() {
-      const chatsPanel = document.getElementById('chats-panel');
-      const chatWindowPanel = document.getElementById('chat-window-panel');
-
       if (window.innerWidth < 768) {
-        chatsPanel.classList.remove('hidden');
-        chatWindowPanel.classList.add('hidden');
-        chatWindowPanel.classList.remove('flex');
+        document.getElementById('chats-panel').classList.remove('hidden');
+        const chatWin = document.getElementById('chat-window-panel');
+        chatWin.classList.add('hidden');
+        chatWin.classList.remove('flex');
       }
       clearActiveChatView();
     }
@@ -1148,62 +1198,32 @@
       activeChatId = null;
       activePartner = null;
       cancelActionState();
-
-      const noChatEl = document.getElementById('no-chat-selected');
-      const activeChatEl = document.getElementById('active-chat-container');
-
-      activeChatEl.classList.add('hidden');
-      activeChatEl.classList.remove('flex');
-      noChatEl.classList.remove('hidden');
-      noChatEl.classList.add('flex');
+      document.getElementById('active-chat-container').classList.add('hidden');
+      document.getElementById('active-chat-container').classList.remove('flex');
+      document.getElementById('no-chat-selected').classList.remove('hidden');
+      document.getElementById('no-chat-selected').classList.add('flex');
     }
 
     async function deleteChatById(chatId) {
-      if (!confirm('Вы действительно хотите удалить этот чат?')) return;
-
+      if (!confirm('Удалить этот чат?')) return;
       try {
-        if (activeChatId === chatId) {
-          closeActiveChatMobile();
-        }
-
+        if (activeChatId === chatId) closeActiveChatMobile();
         await deleteDoc(doc(db, 'chats', chatId));
-      } catch (err) {
-        console.error("Error deleting chat:", err);
-        alert("Произошла ошибка при удалении чата: " + (err.message || err));
-      }
+      } catch (err) { console.error(err); }
     }
 
-    function deleteActiveChat() {
-      closeChatHeaderMenu();
-      if (activeChatId) {
-        deleteChatById(activeChatId);
-      }
-    }
+    function deleteActiveChat() { closeChatHeaderMenu(); if (activeChatId) deleteChatById(activeChatId); }
 
     function listenToMessages(chatId) {
       if (messagesUnsubscribe) messagesUnsubscribe();
-
       const messagesContainer = document.getElementById('messages-container');
-      messagesContainer.innerHTML = `
-        <div id="messages-loading" class="text-center py-8 text-slate-500 text-sm">
-          <i class="fa-solid fa-circle-notch fa-spin text-blue-500 text-lg mb-1"></i>
-          <p>Загрузка сообщений...</p>
-        </div>
-      `;
+      messagesContainer.innerHTML = `<div class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-blue-500 text-lg mb-1"></i><p>Загрузка сообщений...</p></div>`;
 
       const msgsQuery = query(collection(db, 'chats', chatId, 'messages'));
-
       messagesUnsubscribe = onSnapshot(msgsQuery, (snapshot) => {
         const messages = [];
-        snapshot.forEach(docSnap => {
-          messages.push({ id: docSnap.id, ...docSnap.data() });
-        });
-
-        messages.sort((a, b) => {
-          const tA = a.createdAt ? a.createdAt.toDate().getTime() : Date.now();
-          const tB = b.createdAt ? b.createdAt.toDate().getTime() : Date.now();
-          return tA - tB;
-        });
+        snapshot.forEach(docSnap => messages.push({ id: docSnap.id, ...docSnap.data() }));
+        messages.sort((a, b) => (a.createdAt?.toDate().getTime() || 0) - (b.createdAt?.toDate().getTime() || 0));
 
         messagesContainer.innerHTML = '';
         if (messages.length === 0) {
@@ -1215,686 +1235,113 @@
           const isMe = msg.senderId === currentUser.uid;
           const timeStr = msg.createdAt ? formatTime(msg.createdAt.toDate()) : formatTime(new Date());
 
-          if (!isMe && msg.status !== 'read') {
-            updateDoc(doc(db, 'chats', chatId, 'messages', msg.id), { status: 'read' }).catch(console.error);
-          }
-
-          let statusIcon = isMe 
-            ? (msg.status === 'read' ? '<i class="fa-solid fa-check-double text-[11px] text-sky-400"></i>' : '<i class="fa-solid fa-check text-[11px] text-slate-300/70"></i>')
-            : '';
-
-          const senderName = isMe ? (currentUserProfileData?.displayName || 'Вы') : activePartner.displayName;
-
-          let replyQuoteHtml = '';
-          if (msg.replyTo) {
-            replyQuoteHtml = `
-              <div class="mb-2 p-2 rounded-xl bg-slate-900/60 border-l-4 border-blue-400 text-xs overflow-hidden">
-                <div class="font-semibold text-blue-400 text-[11px] truncate">${escapeHtml(msg.replyTo.senderName)}</div>
-                <div class="text-slate-300 truncate text-[11px]">${escapeHtml(msg.replyTo.text || '[Картинка]')}</div>
-              </div>
-            `;
-          }
-
-          let contentHtml = '';
-          if (msg.type === 'image') {
-            contentHtml = `
-              <div class="overflow-hidden rounded-xl cursor-pointer mb-1" onclick="openImageModal('${msg.imageUrl}')">
-                <img src="${msg.imageUrl}" class="max-w-xs max-h-60 rounded-xl object-cover hover:scale-105 transition duration-300">
-              </div>
-            `;
-          } else {
-            contentHtml = `<p class="text-sm leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(msg.text)}</p>`;
-          }
+          let statusIcon = isMe ? (msg.status === 'read' ? '<i class="fa-solid fa-check-double text-[11px] text-sky-400"></i>' : '<i class="fa-solid fa-check text-[11px] text-slate-300/70"></i>') : '';
+          let replyQuoteHtml = msg.replyTo ? `<div class="mb-2 p-2 rounded-xl bg-slate-900/60 border-l-4 border-blue-400 text-xs overflow-hidden"><div class="font-semibold text-blue-400 text-[11px] truncate">${escapeHtml(msg.replyTo.senderName)}</div><div class="text-slate-300 truncate text-[11px]">${escapeHtml(msg.replyTo.text || '[Картинка]')}</div></div>` : '';
+          let contentHtml = msg.type === 'image' ? `<div class="overflow-hidden rounded-xl cursor-pointer mb-1" onclick="openImageModal('${msg.imageUrl}')"><img src="${msg.imageUrl}" class="max-w-xs max-h-60 rounded-xl object-cover"></div>` : `<p class="text-sm leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(msg.text)}</p>`;
 
           const bubble = document.createElement('div');
           bubble.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-3`;
-
           bubble.innerHTML = `
-            <div class="msg-bubble max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-md relative group cursor-pointer ${
-              isMe 
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white message-bubble-out' 
-                : 'bg-slate-800/90 text-slate-100 border border-slate-700/50 message-bubble-in'
-            }">
-              ${replyQuoteHtml}
-              ${contentHtml}
+            <div class="msg-bubble max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-md relative group cursor-pointer ${isMe ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white message-bubble-out' : 'bg-slate-800/90 text-slate-100 border border-slate-700/50 message-bubble-in'}">
+              ${replyQuoteHtml}${contentHtml}
               <div class="flex items-center justify-end space-x-1 mt-1 opacity-90 text-[10px]">
-                ${msg.edited ? `<span class="text-[10px] italic opacity-75 mr-1">(изм.)</span>` : ''}
+                ${msg.edited ? `<span class="italic opacity-75 mr-1">(изм.)</span>` : ''}
                 <span class="${isMe ? 'text-blue-200' : 'text-slate-400'}">${timeStr}</span>
-                ${isMe ? `<span class="ml-1 flex items-center">${statusIcon}</span>` : ''}
+                ${isMe ? `<span class="ml-1">${statusIcon}</span>` : ''}
               </div>
             </div>
           `;
-
           const bubbleEl = bubble.querySelector('.msg-bubble');
-
-          bubbleEl.oncontextmenu = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openContextMenu(e.clientX, e.clientY, { type: 'message', id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName });
-          };
-
-          bubbleEl.ontouchstart = (e) => {
-            longPressTimer = setTimeout(() => {
-              const touch = e.touches[0];
-              openContextMenu(touch.clientX, touch.clientY, { type: 'message', id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName });
-            }, 500);
-          };
-          bubbleEl.ontouchend = () => clearTimeout(longPressTimer);
-          bubbleEl.ontouchmove = () => clearTimeout(longPressTimer);
-
+          bubbleEl.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); openContextMenu(e.clientX, e.clientY, { type: 'message', id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName: isMe ? 'Вы' : activePartner.displayName }); };
           messagesContainer.appendChild(bubble);
         });
-
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }, (err) => console.error("Messages Listener Error:", err));
+      });
     }
 
     function openImageModal(url) {
-      const modal = document.getElementById('image-modal');
-      const img = document.getElementById('modal-image-element');
-      const downloadBtn = document.getElementById('modal-download-btn');
-      
-      img.src = url;
-      downloadBtn.href = url;
-      modal.classList.remove('hidden');
+      document.getElementById('modal-image-element').src = url;
+      document.getElementById('modal-download-btn').href = url;
+      document.getElementById('image-modal').classList.remove('hidden');
     }
-
-    function closeImageModal() {
-      document.getElementById('image-modal').classList.add('hidden');
-      document.getElementById('modal-image-element').src = '';
-    }
+    function closeImageModal() { document.getElementById('image-modal').classList.add('hidden'); }
 
     function openContextMenu(x, y, target) {
       activeContextMenuTarget = target;
       const menu = document.getElementById('context-menu');
-      const replyBtn = document.getElementById('menu-reply-btn');
-      const editBtn = document.getElementById('menu-edit-btn');
-      const deleteMsgBtn = document.getElementById('menu-delete-btn');
-      const deleteChatBtn = document.getElementById('menu-delete-chat-btn');
-
-      if (target.type === 'chat') {
-        replyBtn.style.display = 'none';
-        editBtn.style.display = 'none';
-        deleteMsgBtn.style.display = 'none';
-        deleteChatBtn.style.display = 'flex';
-      } else if (target.type === 'message') {
-        replyBtn.style.display = 'flex';
-        deleteChatBtn.style.display = 'none';
-        if (target.isMe) {
-          editBtn.style.display = 'flex';
-          deleteMsgBtn.style.display = 'flex';
-        } else {
-          editBtn.style.display = 'none';
-          deleteMsgBtn.style.display = 'none';
-        }
-      }
+      document.getElementById('menu-reply-btn').style.display = target.type === 'message' ? 'flex' : 'none';
+      document.getElementById('menu-edit-btn').style.display = (target.type === 'message' && target.isMe) ? 'flex' : 'none';
+      document.getElementById('menu-delete-btn').style.display = (target.type === 'message' && target.isMe) ? 'flex' : 'none';
+      document.getElementById('menu-delete-chat-btn').style.display = target.type === 'chat' ? 'flex' : 'none';
 
       menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`;
       menu.style.top = `${Math.min(y, window.innerHeight - 160)}px`;
       menu.classList.remove('hidden');
       menu.classList.add('flex');
     }
-
-    function closeContextMenu() {
-      const menu = document.getElementById('context-menu');
-      if (menu) {
-        menu.classList.add('hidden');
-        menu.classList.remove('flex');
-      }
-    }
+    function closeContextMenu() { document.getElementById('context-menu').classList.add('hidden'); }
 
     function executeMenuAction(action) {
       if (!activeContextMenuTarget) return;
-
-      if (action === 'deleteChat') {
-        const chatIdToDelete = activeContextMenuTarget.type === 'chat' ? activeContextMenuTarget.chatId : activeChatId;
-        if (chatIdToDelete) {
-          deleteChatById(chatIdToDelete);
-        }
-      } else if (action === 'reply') {
-        actionState = { mode: 'reply', msg: activeContextMenuTarget };
-        showActionBar(activeContextMenuTarget.senderName, activeContextMenuTarget.text);
-        document.getElementById('message-input').focus();
-      } else if (action === 'edit') {
-        openEditModal(activeContextMenuTarget);
-      } else if (action === 'delete') {
-        deleteMessage(activeContextMenuTarget.id);
-      }
+      if (action === 'deleteChat') deleteChatById(activeContextMenuTarget.chatId || activeChatId);
+      else if (action === 'reply') { actionState = { mode: 'reply', msg: activeContextMenuTarget }; showActionBar(activeContextMenuTarget.senderName, activeContextMenuTarget.text); document.getElementById('message-input').focus(); }
+      else if (action === 'edit') openEditModal(activeContextMenuTarget);
+      else if (action === 'delete') deleteMessage(activeContextMenuTarget.id);
       closeContextMenu();
     }
 
     function showActionBar(name, text) {
-      const bar = document.getElementById('action-bar');
-      document.getElementById('action-bar-title').innerHTML = `<i class="fa-solid fa-reply text-[10px]"></i> <span>Отвечаешь на это сообщение (${escapeHtml(name)}):</span>`;
+      document.getElementById('action-bar-title').innerHTML = `<i class="fa-solid fa-reply text-[10px]"></i> <span>Отвечаешь (${escapeHtml(name)}):</span>`;
       document.getElementById('action-bar-text').textContent = text;
-      bar.classList.remove('hidden');
+      document.getElementById('action-bar').classList.remove('hidden');
     }
-
-    function cancelActionState() {
-      actionState = null;
-      document.getElementById('action-bar').classList.add('hidden');
-    }
-
-    function openEditModal(msg) {
-      actionState = { mode: 'edit', msg: msg };
-      const modal = document.getElementById('edit-message-modal');
-      const input = document.getElementById('edit-message-input');
-      
-      input.value = msg.text;
-      modal.classList.remove('hidden');
-      setTimeout(() => input.focus(), 100);
-    }
-
-    function closeEditModal() {
-      document.getElementById('edit-message-modal').classList.add('hidden');
-      actionState = null;
-    }
-
+    function cancelActionState() { actionState = null; document.getElementById('action-bar').classList.add('hidden'); }
+    function openEditModal(msg) { actionState = { mode: 'edit', msg }; document.getElementById('edit-message-input').value = msg.text; document.getElementById('edit-message-modal').classList.remove('hidden'); }
+    function closeEditModal() { document.getElementById('edit-message-modal').classList.add('hidden'); actionState = null; }
     async function handleSaveEditedMessage(e) {
       e.preventDefault();
-      const input = document.getElementById('edit-message-input');
-      const newText = input.value.trim();
-
-      if (!newText || !activeChatId || !actionState || !actionState.msg) return;
-
-      try {
-        await updateDoc(doc(db, 'chats', activeChatId, 'messages', actionState.msg.id), {
-          text: newText,
-          edited: true
-        });
-        closeEditModal();
-      } catch (err) {
-        console.error("Error saving edited message:", err);
-      }
+      const newText = document.getElementById('edit-message-input').value.trim();
+      if (!newText || !activeChatId || !actionState) return;
+      await updateDoc(doc(db, 'chats', activeChatId, 'messages', actionState.msg.id), { text: newText, edited: true });
+      closeEditModal();
     }
-
-    async function deleteMessage(msgId) {
-      if (!activeChatId) return;
-      try {
-        await deleteDoc(doc(db, 'chats', activeChatId, 'messages', msgId));
-      } catch (err) {
-        console.error("Error deleting message:", err);
-      }
-    }
+    async function deleteMessage(msgId) { await deleteDoc(doc(db, 'chats', activeChatId, 'messages', msgId)); }
 
     async function handleSendMessage(e) {
       e.preventDefault();
       const input = document.getElementById('message-input');
       const text = input.value.trim();
-
       if (!text || !activeChatId) return;
-
       input.value = '';
-
-      try {
-        const msgData = {
-          senderId: currentUser.uid,
-          text: text,
-          type: 'text',
-          createdAt: serverTimestamp(),
-          status: 'sent'
-        };
-
-        if (actionState && actionState.mode === 'reply') {
-          msgData.replyTo = {
-            id: actionState.msg.id,
-            text: actionState.msg.text,
-            senderName: actionState.msg.senderName
-          };
-          cancelActionState();
-        }
-
-        await addDoc(collection(db, 'chats', activeChatId, 'messages'), msgData);
-        await updateDoc(doc(db, 'chats', activeChatId), {
-          lastMessage: text,
-          updatedAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.error("Error sending message:", err);
+      const msgData = { senderId: currentUser.uid, text, type: 'text', createdAt: serverTimestamp(), status: 'sent' };
+      if (actionState && actionState.mode === 'reply') {
+        msgData.replyTo = { id: actionState.msg.id, text: actionState.msg.text, senderName: actionState.msg.senderName };
+        cancelActionState();
       }
+      await addDoc(collection(db, 'chats', activeChatId, 'messages'), msgData);
+      await updateDoc(doc(db, 'chats', activeChatId), { lastMessage: text, updatedAt: serverTimestamp() });
     }
 
     async function handleImageSelection(e) {
       const file = e.target.files[0];
       if (!file || !activeChatId) return;
-
       e.target.value = '';
-
       const formData = new FormData();
       formData.append('image', file);
-
       try {
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-          method: 'POST',
-          body: formData
-        });
-
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
-          const imageUrl = result.data.url;
-
-          const msgData = {
-            senderId: currentUser.uid,
-            imageUrl: imageUrl,
-            type: 'image',
-            createdAt: serverTimestamp(),
-            status: 'sent'
-          };
-
-          if (actionState && actionState.mode === 'reply') {
-            msgData.replyTo = {
-              id: actionState.msg.id,
-              text: actionState.msg.text,
-              senderName: actionState.msg.senderName
-            };
-            cancelActionState();
-          }
-
+          const msgData = { senderId: currentUser.uid, imageUrl: result.data.url, type: 'image', createdAt: serverTimestamp(), status: 'sent' };
           await addDoc(collection(db, 'chats', activeChatId, 'messages'), msgData);
-          await updateDoc(doc(db, 'chats', activeChatId), {
-            lastMessage: '[Картинка]',
-            updatedAt: serverTimestamp()
-          });
-        } else {
-          alert('Ошибка при загрузке картинки на ImgBB.');
+          await updateDoc(doc(db, 'chats', activeChatId), { lastMessage: '[Картинка]', updatedAt: serverTimestamp() });
         }
-      } catch (err) {
-        console.error("ImgBB Upload Error:", err);
-        alert('Не удалось загрузить изображение.');
-      }
+      } catch (err) { console.error(err); }
     }
 
-    function formatTime(date) {
-      if (!date) return '';
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
+    function formatTime(date) { return date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''; }
     function escapeHtml(text) {
-      if (!text) return '';
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    /* ==========================================================================
-       P2P WEBRTC AUDIO CALLS SYSTEM IMPLEMENTATION
-       ========================================================================== */
-
-    function listenToIncomingCalls() {
-      if (!currentUser) return;
-
-      const q = query(
-        collection(db, 'calls'),
-        where('receiverId', '==', currentUser.uid),
-        where('status', '==', 'offered')
-      );
-
-      incomingCallUnsubscribe = onSnapshot(q, async (snapshot) => {
-        snapshot.docChanges().forEach(async (change) => {
-          if (change.type === 'added') {
-            const callData = change.doc.data();
-            activeCallDocId = change.doc.id;
-
-            // Fetch Caller's detailed user profile
-            let callerInfo = {
-              displayName: callData.callerName || 'Собеседник',
-              photoURL: callData.callerAvatar || 'https://placehold.co/150x150/3b82f6/ffffff?text=U'
-            };
-
-            const userSnap = await getDoc(doc(db, 'users', callData.callerId));
-            if (userSnap.exists()) {
-              callerInfo = userSnap.data();
-            }
-
-            // Show Call Overlay with Incoming UI
-            document.getElementById('call-user-name').textContent = callerInfo.displayName;
-            document.getElementById('call-user-avatar').src = callerInfo.photoURL;
-            document.getElementById('call-status-text').textContent = 'Входящий звонок...';
-            document.getElementById('call-timer-text').classList.add('hidden');
-            
-            document.getElementById('incoming-call-controls').classList.remove('hidden');
-            document.getElementById('incoming-call-controls').classList.add('flex');
-            document.getElementById('active-call-controls').classList.add('hidden');
-            document.getElementById('active-call-controls').classList.remove('flex');
-
-            document.getElementById('call-overlay').classList.remove('hidden');
-
-            listenToCallDocStatus(activeCallDocId);
-          }
-        });
-      });
-    }
-
-    async function startOutgoingCall() {
-      if (!activePartner || !currentUser) return;
-
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } catch (err) {
-        console.error("Microphone Access Error:", err);
-        alert("Не удалось получить доступ к микрофону!");
-        return;
-      }
-
-      // Display Outgoing Call UI
-      document.getElementById('call-user-name').textContent = activePartner.displayName;
-      document.getElementById('call-user-avatar').src = activePartner.photoURL;
-      document.getElementById('call-status-text').textContent = 'Звоним...';
-      document.getElementById('call-timer-text').classList.add('hidden');
-
-      document.getElementById('incoming-call-controls').classList.add('hidden');
-      document.getElementById('incoming-call-controls').classList.remove('flex');
-      document.getElementById('active-call-controls').classList.remove('hidden');
-      document.getElementById('active-call-controls').classList.add('flex');
-
-      document.getElementById('call-overlay').classList.remove('hidden');
-
-      // Initialize WebRTC Peer Connection
-      peerConnection = new RTCPeerConnection(rtcConfiguration);
-      remoteStream = new MediaStream();
-      document.getElementById('remote-audio').srcObject = remoteStream;
-
-      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-      peerConnection.ontrack = (event) => {
-        event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-      };
-
-      peerConnection.onconnectionstatechange = () => {
-        handleConnectionStateChange();
-      };
-
-      // Create Signaling Firestore Call Document
-      const callDocRef = doc(collection(db, 'calls'));
-      activeCallDocId = callDocRef.id;
-
-      const offerCandidatesColl = collection(callDocRef, 'offerCandidates');
-      const answerCandidatesColl = collection(callDocRef, 'answerCandidates');
-
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          addDoc(offerCandidatesColl, event.candidate.toJSON());
-        }
-      };
-
-      const offerDescription = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offerDescription);
-
-      const offer = {
-        sdp: offerDescription.sdp,
-        type: offerDescription.type
-      };
-
-      await setDoc(callDocRef, {
-        callerId: currentUser.uid,
-        callerName: currentUserProfileData?.displayName || 'Пользователь',
-        callerAvatar: currentUserProfileData?.photoURL || '',
-        receiverId: activePartner.uid,
-        offer: offer,
-        status: 'offered',
-        createdAt: serverTimestamp()
-      });
-
-      // Listen for Answer SDP from Receiver
-      activeCallDocUnsubscribe = onSnapshot(callDocRef, (snapshot) => {
-        const data = snapshot.data();
-        if (data && data.status === 'rejected') {
-          document.getElementById('call-status-text').textContent = 'Звонок отклонён';
-          setTimeout(cleanupCall, 1500);
-        } else if (data && data.status === 'ended') {
-          cleanupCall();
-        } else if (peerConnection && !peerConnection.currentRemoteDescription && data && data.answer) {
-          const answerDescription = new RTCSessionDescription(data.answer);
-          peerConnection.setRemoteDescription(answerDescription);
-          document.getElementById('call-status-text').textContent = 'Соединение...';
-        }
-      });
-
-      // Listen for Answer ICE Candidates from Receiver
-      activeCallAnswerCandidatesUnsub = onSnapshot(answerCandidatesColl, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            peerConnection.addIceCandidate(candidate);
-          }
-        });
-      });
-    }
-
-    async function acceptIncomingCall() {
-      if (!activeCallDocId) return;
-
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } catch (err) {
-        console.error("Microphone Access Error:", err);
-        alert("Не удалось получить доступ к микрофону!");
-        rejectIncomingCall();
-        return;
-      }
-
-      document.getElementById('call-status-text').textContent = 'Соединение...';
-      document.getElementById('incoming-call-controls').classList.add('hidden');
-      document.getElementById('incoming-call-controls').classList.remove('flex');
-      document.getElementById('active-call-controls').classList.remove('hidden');
-      document.getElementById('active-call-controls').classList.add('flex');
-
-      peerConnection = new RTCPeerConnection(rtcConfiguration);
-      remoteStream = new MediaStream();
-      document.getElementById('remote-audio').srcObject = remoteStream;
-
-      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-      peerConnection.ontrack = (event) => {
-        event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-      };
-
-      peerConnection.onconnectionstatechange = () => {
-        handleConnectionStateChange();
-      };
-
-      const callDocRef = doc(db, 'calls', activeCallDocId);
-      const answerCandidatesColl = collection(callDocRef, 'answerCandidates');
-      const offerCandidatesColl = collection(callDocRef, 'offerCandidates');
-
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          addDoc(answerCandidatesColl, event.candidate.toJSON());
-        }
-      };
-
-      const callSnap = await getDoc(callDocRef);
-      const callData = callSnap.data();
-
-      if (!callData || !callData.offer) {
-        document.getElementById('call-status-text').textContent = 'Ошибка соединения';
-        setTimeout(cleanupCall, 1500);
-        return;
-      }
-
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
-
-      const answerDescription = await peerConnection.createAnswer();
-      await peerConnection.setLocalDescription(answerDescription);
-
-      const answer = {
-        type: answerDescription.type,
-        sdp: answerDescription.sdp
-      };
-
-      await updateDoc(callDocRef, { answer: answer, status: 'accepted' });
-
-      // Listen for Offer ICE Candidates from Caller
-      activeCallOfferCandidatesUnsub = onSnapshot(offerCandidatesColl, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const candidate = new RTCIceCandidate(change.doc.data());
-            peerConnection.addIceCandidate(candidate);
-          }
-        });
-      });
-    }
-
-    async function rejectIncomingCall() {
-      if (activeCallDocId) {
-        try {
-          await updateDoc(doc(db, 'calls', activeCallDocId), { status: 'rejected' });
-        } catch (err) {
-          console.error("Error rejecting call:", err);
-        }
-      }
-      cleanupCall();
-    }
-
-    async function endActiveCall() {
-      if (activeCallDocId) {
-        try {
-          await updateDoc(doc(db, 'calls', activeCallDocId), { status: 'ended' });
-        } catch (err) {
-          console.error("Error ending call:", err);
-        }
-      }
-      cleanupCall();
-    }
-
-    function listenToCallDocStatus(callId) {
-      if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
-
-      activeCallDocUnsubscribe = onSnapshot(doc(db, 'calls', callId), (docSnap) => {
-        const data = docSnap.data();
-        if (data) {
-          if (data.status === 'ended' || data.status === 'rejected') {
-            cleanupCall();
-          }
-        }
-      });
-    }
-
-    function handleConnectionStateChange() {
-      if (!peerConnection) return;
-
-      const state = peerConnection.connectionState;
-      if (state === 'connected') {
-        document.getElementById('call-status-text').textContent = 'Разговор';
-        document.getElementById('call-timer-text').classList.remove('hidden');
-        startCallTimer();
-      } else if (state === 'failed' || state === 'disconnected') {
-        document.getElementById('call-status-text').textContent = 'Ошибка соединения';
-        stopCallTimer();
-        setTimeout(cleanupCall, 2000);
-      } else if (state === 'closed') {
-        cleanupCall();
-      }
-    }
-
-    function startCallTimer() {
-      stopCallTimer();
-      callSecondsCount = 0;
-      const timerEl = document.getElementById('call-timer-text');
-      timerEl.textContent = '00:00';
-
-      callTimerInterval = setInterval(() => {
-        callSecondsCount++;
-        const mins = String(Math.floor(callSecondsCount / 60)).padStart(2, '0');
-        const secs = String(callSecondsCount % 60).padStart(2, '0');
-        timerEl.textContent = `${mins}:${secs}`;
-      }, 1000);
-    }
-
-    function stopCallTimer() {
-      if (callTimerInterval) {
-        clearInterval(callTimerInterval);
-        callTimerInterval = null;
-      }
-    }
-
-    function toggleMicrophone() {
-      if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-          isMicMuted = !isMicMuted;
-          audioTrack.enabled = !isMicMuted;
-
-          const micBtn = document.getElementById('toggle-mic-btn');
-          const micIcon = document.getElementById('mic-icon');
-
-          if (isMicMuted) {
-            micBtn.classList.remove('bg-slate-800', 'text-slate-200');
-            micBtn.classList.add('bg-red-600', 'text-white');
-            micIcon.className = 'fa-solid fa-microphone-slash';
-          } else {
-            micBtn.classList.remove('bg-red-600', 'text-white');
-            micBtn.classList.add('bg-slate-800', 'text-slate-200');
-            micIcon.className = 'fa-solid fa-microphone';
-          }
-        }
-      }
-    }
-
-    function toggleSpeaker() {
-      const remoteAudio = document.getElementById('remote-audio');
-      isSpeakerMuted = !isSpeakerMuted;
-      remoteAudio.muted = isSpeakerMuted;
-
-      const speakerBtn = document.getElementById('toggle-speaker-btn');
-      const speakerIcon = document.getElementById('speaker-icon');
-
-      if (isSpeakerMuted) {
-        speakerBtn.classList.remove('bg-slate-800', 'text-slate-200');
-        speakerBtn.classList.add('bg-amber-600', 'text-white');
-        speakerIcon.className = 'fa-solid fa-volume-xmark';
-      } else {
-        speakerBtn.classList.remove('bg-amber-600', 'text-white');
-        speakerBtn.classList.add('bg-slate-800', 'text-slate-200');
-        speakerIcon.className = 'fa-solid fa-volume-high';
-      }
-    }
-
-    function cleanupCall() {
-      stopCallTimer();
-
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
-
-      if (remoteStream) {
-        remoteStream.getTracks().forEach(track => track.stop());
-        remoteStream = null;
-      }
-
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-
-      if (activeCallDocUnsubscribe) activeCallDocUnsubscribe();
-      if (activeCallOfferCandidatesUnsub) activeCallOfferCandidatesUnsub();
-      if (activeCallAnswerCandidatesUnsub) activeCallAnswerCandidatesUnsub();
-
-      activeCallDocId = null;
-      isMicMuted = false;
-      isSpeakerMuted = false;
-
-      // Reset Mic/Speaker Buttons UI
-      const micBtn = document.getElementById('toggle-mic-btn');
-      const micIcon = document.getElementById('mic-icon');
-      if (micBtn && micIcon) {
-        micBtn.className = 'w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center text-xl shadow-lg transition active:scale-95';
-        micIcon.className = 'fa-solid fa-microphone';
-      }
-
-      const speakerBtn = document.getElementById('toggle-speaker-btn');
-      const speakerIcon = document.getElementById('speaker-icon');
-      if (speakerBtn && speakerIcon) {
-        speakerBtn.className = 'w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center text-xl shadow-lg transition active:scale-95';
-        speakerIcon.className = 'fa-solid fa-volume-high';
-      }
-
-      document.getElementById('call-overlay').classList.add('hidden');
+      return text ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : '';
     }
   </script>
 </body>
