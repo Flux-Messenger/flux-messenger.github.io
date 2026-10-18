@@ -198,8 +198,8 @@
       </button>
     </div>
 
-    <!-- RIGHT PANEL: CHAT WINDOW -->
-    <div id="chat-window-panel" class="absolute inset-0 md:static md:flex-1 bg-slate-950 flex flex-col transform translate-x-full md:translate-x-0 transition-transform duration-300 z-20 md:z-0">
+    <!-- RIGHT PANEL: CHAT WINDOW (ИСПРАВЛЕНО: z-20 для всей панели чата) -->
+    <div id="chat-window-panel" class="absolute inset-0 md:static md:flex-1 bg-slate-950 flex flex-col transform translate-x-full md:translate-x-0 transition-transform duration-300 z-20 relative">
       
       <div id="no-chat-selected" class="flex flex-1 flex-col items-center justify-center text-center p-6 text-slate-500 bg-slate-950">
         <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 text-blue-500/80 shadow-inner">
@@ -212,7 +212,7 @@
       <div id="active-chat-container" class="flex-1 flex flex-col h-full hidden">
         
         <!-- Partner Top Header -->
-        <div class="px-4 py-3 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 relative">
+        <div class="px-4 py-3 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 relative z-30">
           <div onclick="openPartnerProfileModal()" class="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition flex-1 min-w-0 pr-2">
             <button onclick="event.stopPropagation(); closeActiveChatMobile()" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center mr-1 flex-shrink-0">
               <i class="fa-solid fa-arrow-left"></i>
@@ -231,20 +231,21 @@
             <button onclick="toggleChatHeaderMenu(event)" class="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
               <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
             </button>
-            <!-- Fixed z-index and positioning so it won't get clipped -->
-            <div id="chat-header-menu" class="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 hidden z-50">
-              <button onclick="openPartnerProfileModal()" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2">
+
+            <!-- Выпадающее меню поверх всех элементов -->
+            <div id="chat-header-menu" class="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl py-1 hidden z-50">
+              <button onclick="openPartnerProfileModal()" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-700/80 flex items-center gap-2 transition">
                 <i class="fa-solid fa-user text-slate-400"></i> Профиль собеседника
               </button>
               <div class="border-t border-slate-700/60 my-1"></div>
-              <button onclick="deleteActiveChat()" class="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/20 flex items-center gap-2">
+              <button onclick="deleteActiveChat()" class="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/20 flex items-center gap-2 transition">
                 <i class="fa-solid fa-trash"></i> Удалить чат
               </button>
             </div>
           </div>
         </div>
 
-        <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950/60 relative">
+        <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950/60 relative z-10">
           <div id="messages-loading" class="text-center py-8 text-slate-500 text-sm">
             <i class="fa-solid fa-circle-notch fa-spin text-blue-500 text-lg mb-1"></i>
             <p>Загрузка сообщений...</p>
@@ -264,7 +265,7 @@
         </div>
 
         <!-- Chat Bottom Input Bar with Attachment Button -->
-        <div class="p-3 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md flex-shrink-0">
+        <div class="p-3 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md flex-shrink-0 relative z-10">
           <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-2 w-full mx-auto">
             <!-- Hidden File Input -->
             <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleImageSelection(event)">
@@ -590,7 +591,6 @@
       const userRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userRef);
 
-      // Генерируем дефолтную аватарку с буквой, если у пользователя нет фото из Google
       const defaultLetterPhoto = `https://placehold.co/100x100/3b82f6/ffffff?text=${(user.displayName || user.email || 'U')[0].toUpperCase()}`;
       const googlePhoto = user.photoURL || defaultLetterPhoto;
 
@@ -739,7 +739,6 @@
     }
 
     function resetAvatarToGooglePhoto() {
-      // Кнопка возвращает либо аватарку с буквой, либо googlePhotoURL (если пользователь заходил через Google)
       const targetPhoto = currentUserProfileData?.defaultPhotoURL || currentUserProfileData?.googlePhotoURL || `https://placehold.co/100x100/3b82f6/ffffff?text=${(currentUserProfileData?.displayName || 'U')[0].toUpperCase()}`;
       newAvatarUrlTemp = targetPhoto;
       document.getElementById('edit-profile-avatar-preview').src = newAvatarUrlTemp;
