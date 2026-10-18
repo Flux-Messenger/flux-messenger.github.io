@@ -149,7 +149,7 @@
   <div class="flex-1 flex overflow-hidden relative">
 
     <!-- LEFT PANEL: CHAT LIST & USER BAR -->
-    <div id="chats-panel" class="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-800/80 flex flex-col bg-slate-900/60 backdrop-blur-md z-10 transition-transform duration-300">
+    <div id="chats-panel" class="w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-slate-800/80 flex flex-col bg-slate-900/60 backdrop-blur-md z-10">
       
       <!-- Current User Top Bar (Clickable) -->
       <div onclick="openMyProfileModal()" class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 cursor-pointer hover:bg-slate-800/50 transition">
@@ -199,7 +199,7 @@
     </div>
 
     <!-- RIGHT PANEL: CHAT WINDOW -->
-    <div id="chat-window-panel" class="absolute inset-0 md:static md:flex-1 bg-slate-950 flex flex-col transform translate-x-full md:translate-x-0 transition-transform duration-300 z-20 relative">
+    <div id="chat-window-panel" class="hidden md:flex flex-1 bg-slate-950 flex-col absolute inset-0 md:static z-20">
       
       <div id="no-chat-selected" class="flex flex-1 flex-col items-center justify-center text-center p-6 text-slate-500 bg-slate-950">
         <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 text-blue-500/80 shadow-inner">
@@ -980,7 +980,7 @@
       }
     }
 
-    // ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА ЧАТА (автоскрытие списка на мобильных)
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ: переключение панелей на мобильных и ПК
     function selectChat(chatId, partner) {
       activeChatId = chatId;
       activePartner = partner;
@@ -988,6 +988,8 @@
 
       const noChatEl = document.getElementById('no-chat-selected');
       const activeChatEl = document.getElementById('active-chat-container');
+      const chatsPanel = document.getElementById('chats-panel');
+      const chatWindowPanel = document.getElementById('chat-window-panel');
       
       noChatEl.classList.add('hidden');
       noChatEl.classList.remove('flex');
@@ -998,14 +1000,25 @@
       document.getElementById('chat-header-name').textContent = partner.displayName;
       document.getElementById('chat-header-avatar').src = partner.photoURL;
 
-      // Показываем окно чата на мобильных
-      document.getElementById('chat-window-panel').classList.remove('translate-x-full');
+      // На мобильных скрываем список чатов и показываем окно переписки
+      if (window.innerWidth < 768) {
+        chatsPanel.classList.add('hidden');
+        chatWindowPanel.classList.remove('hidden');
+        chatWindowPanel.classList.add('flex');
+      }
 
       listenToMessages(chatId);
     }
 
     function closeActiveChatMobile() {
-      document.getElementById('chat-window-panel').classList.add('translate-x-full');
+      const chatsPanel = document.getElementById('chats-panel');
+      const chatWindowPanel = document.getElementById('chat-window-panel');
+
+      if (window.innerWidth < 768) {
+        chatsPanel.classList.remove('hidden');
+        chatWindowPanel.classList.add('hidden');
+        chatWindowPanel.classList.remove('flex');
+      }
       clearActiveChatView();
     }
 
@@ -1029,15 +1042,10 @@
 
       try {
         if (activeChatId === chatId) {
-          clearActiveChatView();
+          closeActiveChatMobile();
         }
 
         await deleteDoc(doc(db, 'chats', chatId));
-
-        const chatWindowPanel = document.getElementById('chat-window-panel');
-        if (chatWindowPanel) {
-          chatWindowPanel.classList.add('translate-x-full');
-        }
       } catch (err) {
         console.error("Error deleting chat:", err);
         alert("Произошла ошибка при удалении чата: " + (err.message || err));
