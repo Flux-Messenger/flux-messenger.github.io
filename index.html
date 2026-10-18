@@ -199,7 +199,7 @@
     </div>
 
     <!-- RIGHT PANEL: CHAT WINDOW -->
-    <div id="chat-window-panel" class="absolute inset-0 md:static md:flex-1 bg-slate-950 flex flex-col transform translate-x-full md:translate-x-0 transition-transform duration-300 z-30 md:z-10">
+    <div id="chat-window-panel" class="absolute inset-0 md:static md:flex-1 bg-slate-950 flex flex-col transform translate-x-full md:translate-x-0 transition-transform duration-300 z-20 md:z-0">
       
       <div id="no-chat-selected" class="flex flex-1 flex-col items-center justify-center text-center p-6 text-slate-500 bg-slate-950">
         <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 text-blue-500/80 shadow-inner">
@@ -231,6 +231,7 @@
             <button onclick="toggleChatHeaderMenu(event)" class="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
               <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
             </button>
+            <!-- Fixed z-index and positioning so it won't get clipped -->
             <div id="chat-header-menu" class="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 hidden z-50">
               <button onclick="openPartnerProfileModal()" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2">
                 <i class="fa-solid fa-user text-slate-400"></i> Профиль собеседника
@@ -521,7 +522,7 @@
     let userProfileUnsubscribe = null;
     let allUsersCache = [];
 
-    let activeContextMenuTarget = null; // Can be { type: 'message', ... } or { type: 'chat', chatId }
+    let activeContextMenuTarget = null;
     let actionState = null;
     let longPressTimer = null;
     let newAvatarUrlTemp = null;
@@ -589,15 +590,18 @@
       const userRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userRef);
 
-      const photo = user.photoURL || `https://placehold.co/100x100/3b82f6/ffffff?text=${(user.displayName || user.email || 'U')[0].toUpperCase()}`;
+      // Генерируем дефолтную аватарку с буквой, если у пользователя нет фото из Google
+      const defaultLetterPhoto = `https://placehold.co/100x100/3b82f6/ffffff?text=${(user.displayName || user.email || 'U')[0].toUpperCase()}`;
+      const googlePhoto = user.photoURL || defaultLetterPhoto;
 
       if (!userDoc.exists()) {
         const userData = {
           uid: user.uid,
           displayName: user.displayName || user.email.split('@')[0],
           email: user.email,
-          photoURL: photo,
-          googlePhotoURL: user.photoURL || photo,
+          photoURL: googlePhoto,
+          googlePhotoURL: googlePhoto,
+          defaultPhotoURL: defaultLetterPhoto,
           bio: 'Всем привет! Я использую Flux Messenger.',
           lastSeen: serverTimestamp()
         };
@@ -605,7 +609,8 @@
       } else {
         await updateDoc(userRef, { 
           lastSeen: serverTimestamp(),
-          googlePhotoURL: user.photoURL || photo
+          googlePhotoURL: googlePhoto,
+          defaultPhotoURL: userDoc.data().defaultPhotoURL || defaultLetterPhoto
         });
       }
     }
@@ -734,8 +739,9 @@
     }
 
     function resetAvatarToGooglePhoto() {
-      const googlePhoto = currentUser.photoURL || currentUserProfileData?.googlePhotoURL || `https://placehold.co/100x100/3b82f6/ffffff?text=${(currentUserProfileData?.displayName || 'U')[0].toUpperCase()}`;
-      newAvatarUrlTemp = googlePhoto;
+      // Кнопка возвращает либо аватарку с буквой, либо googlePhotoURL (если пользователь заходил через Google)
+      const targetPhoto = currentUserProfileData?.defaultPhotoURL || currentUserProfileData?.googlePhotoURL || `https://placehold.co/100x100/3b82f6/ffffff?text=${(currentUserProfileData?.displayName || 'U')[0].toUpperCase()}`;
+      newAvatarUrlTemp = targetPhoto;
       document.getElementById('edit-profile-avatar-preview').src = newAvatarUrlTemp;
     }
 
@@ -846,7 +852,6 @@
 
         chats.sort((a, b) => b.updatedAt - a.updatedAt);
 
-        // Check if currently active chat was deleted
         if (activeChatId && !chats.some(c => c.id === activeChatId)) {
           clearActiveChatView();
         }
@@ -1023,7 +1028,6 @@
       if (!confirm('Вы действительно хотите удалить этот чат и всю переписку?')) return;
 
       try {
-        // Delete all messages in the subcollection first
         const messagesSnap = await getDocs(collection(db, 'chats', chatId, 'messages'));
         const deletePromises = [];
         messagesSnap.forEach((msgDoc) => {
@@ -1031,7 +1035,6 @@
         });
         await Promise.all(deletePromises);
 
-        // Delete main chat document
         await deleteDoc(doc(db, 'chats', chatId));
 
         if (activeChatId === chatId) {
