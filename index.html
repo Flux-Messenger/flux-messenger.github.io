@@ -603,15 +603,17 @@
       );
 
       globalCallUnsubscribe = onSnapshot(callsQuery, async (snapshot) => {
-        if (!snapshot.empty) {
-          const callDoc = snapshot.docs[0];
-          const callData = callDoc.data();
+        // Проверяем, есть ли активные входящие со статусом ringing
+        const activeIncomingCall = snapshot.docs.find(docSnap => docSnap.data().callerId !== uid);
 
+        if (activeIncomingCall) {
+          const callData = activeIncomingCall.data();
+
+          // Если мы еще не в звонке, показываем входящий вызов
           if (callState === 'idle') {
-            currentCallId = callDoc.id;
+            currentCallId = activeIncomingCall.id;
             callState = 'ringing_incoming';
             
-            // Fetch caller profile info
             let callerName = callData.callerName || 'Собеседник';
             let callerPhoto = callData.callerPhoto || 'https://placehold.co/150x150/3b82f6/ffffff?text=U';
 
@@ -624,9 +626,17 @@
             showIncomingCallUI(callerName, callerPhoto);
           }
         } else {
-          // If call was canceled remotely while ringing
+          // Закрываем окно только если звонок действительно отменился, а не просто обновились кандидаты
           if (callState === 'ringing_incoming') {
-            resetCallState();
+            // Проверим текущий документ звонка, вдруг он перешел в connecting/ended
+            if (currentCallId) {
+              const checkSnap = await getDoc(doc(db, 'calls', currentCallId));
+              if (!checkSnap.exists() || checkSnap.data().status === 'ended' || checkSnap.data().status === 'declined') {
+                resetCallState();
+              }
+            } else {
+              resetCallState();
+            }
           }
         }
       });
