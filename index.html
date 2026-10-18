@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flux Messenger</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.7);
+    }
+    .touch-none {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- App Wrapper -->
+  <div id="app-container" class="h-full w-full flex flex-col relative">
+
+    <!-- Auth View -->
+    <div id="auth-screen" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-12 -right-12 w-32 h-32 bg-brand-500/20 rounded-full blur-2xl"></div>
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-600 text-white text-3xl font-bold mb-3 shadow-lg shadow-brand-500/30">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Flux Messenger</h1>
+          <p class="text-slate-400 text-sm mt-1">Быстрый и безопасный веб-мессенджер</p>
+        </div>
+
+        <!-- Auth Tabs -->
+        <div class="flex bg-slate-800/60 p-1 rounded-xl mb-6 border border-slate-700/50">
+          <button id="tab-login-btn" class="flex-1 py-2 text-sm font-semibold rounded-lg bg-brand-600 text-white transition-all">Вход</button>
+          <button id="tab-register-btn" class="flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition-all">Регистрация</button>
+        </div>
+
+        <!-- Auth Form -->
+        <form id="auth-form" class="space-y-4">
+          <div id="name-field-wrapper" class="hidden">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Имя пользователя</label>
+            <div class="relative">
+              <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+              <input type="text" id="auth-name" placeholder="Иван Иванов" class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 transition">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Email</label>
+            <div class="relative">
+              <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+              <input type="email" id="auth-email" required placeholder="user@example.com" class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 transition">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Пароль</label>
+            <div class="relative">
+              <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-500 text-sm"></i>
+              <input type="password" id="auth-password" required placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 transition">
+            </div>
+          </div>
+
+          <div id="auth-error" class="hidden bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-xl"></div>
+
+          <button type="submit" id="auth-submit-btn" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl shadow-lg shadow-brand-500/25 active:scale-[0.98] transition">
+            Войти
+          </button>
+        </form>
+
+        <div class="relative my-6 text-center">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-800"></div></div>
+          <span class="relative bg-slate-900 px-3 text-xs text-slate-500 uppercase">Или</span>
+        </div>
+
+        <button id="google-auth-btn" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium rounded-xl flex items-center justify-center gap-3 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.2 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15s.7 5.3 1.9 7.7l3.7-2.9z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.2-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/></svg>
+          Продолжить через Google
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Messenger View -->
+    <div id="messenger-screen" class="h-full w-full flex overflow-hidden">
+
+      <!-- Sidebar (Chats List) -->
+      <div id="sidebar" class="w-full md:w-80 lg:w-96 bg-slate-950 border-r border-slate-800 flex flex-col h-full shrink-0 z-20 transition-all duration-300">
+        <!-- User Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+          <div class="flex items-center space-x-3">
+            <div id="current-user-avatar" class="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-base shadow">
+              U
+            </div>
+            <div class="overflow-hidden">
+              <h2 id="current-user-name" class="font-semibold text-sm text-slate-100 truncate">Пользователь</h2>
+              <p id="current-user-email" class="text-xs text-slate-400 truncate">user@flux.com</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-1">
+            <button id="new-chat-btn" title="Новый чат" class="w-9 h-9 rounded-xl hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-brand-400 transition">
+              <i class="fa-solid fa-user-plus text-base"></i>
+            </button>
+            <button id="logout-btn" title="Выйти" class="w-9 h-9 rounded-xl hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-red-400 transition">
+              <i class="fa-solid fa-right-from-bracket text-base"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chats List Header -->
+        <div class="px-4 py-3 border-b border-slate-800/60 flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Сообщения</span>
+          <span id="chat-count-badge" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-medium">0</span>
+        </div>
+
+        <!-- Chats Container -->
+        <div id="chats-list" class="flex-1 overflow-y-auto divide-y divide-slate-800/40">
+          <div class="p-8 text-center text-slate-500 text-sm">
+            <i class="fa-solid fa-circle-notch fa-spin text-2xl text-brand-500 mb-2 block"></i>
+            Загрузка диалогов...
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Chat Area -->
+      <div id="chat-area" class="flex-1 flex flex-col h-full bg-slate-900 relative">
+        
+        <!-- Empty State (No chat selected) -->
+        <div id="no-chat-selected" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-slate-900">
+          <div class="w-20 h-20 rounded-3xl bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-brand-500 text-4xl mb-4 shadow-xl">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Выберите или создайте чат</h3>
+          <p class="text-slate-400 text-sm max-w-sm mb-6">Нажмите на кнопку с плюсом в левой панели, чтобы найти собеседника по email.</p>
+          <button id="empty-start-chat-btn" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-brand-500/20 transition flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> Начать переписку
+          </button>
+        </div>
+
+        <!-- Chat Header -->
+        <div id="chat-header" class="h-16 px-4 border-b border-slate-800 bg-slate-950/80 backdrop-blur flex items-center justify-between shrink-0 z-20">
+          <div class="flex items-center space-x-3">
+            <button id="back-to-sidebar-btn" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700">
+              <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div id="partner-avatar" class="w-10 h-10 rounded-full bg-slate-700 text-white flex items-center justify-center font-bold shadow">
+              ?
+            </div>
+            <div>
+              <h3 id="partner-name" class="font-semibold text-sm text-slate-100">Собеседник</h3>
+              <p id="partner-status" class="text-[11px] text-brand-400 font-medium">в сети</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages Display -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 relative">
+          <!-- Messages will be rendered dynamically -->
+        </div>
+
+        <!-- Reply Preview Panel (Hidden by default) -->
+        <div id="reply-preview-bar" class="hidden px-4 py-2 bg-slate-800/90 border-t border-slate-700 flex items-center justify-between text-xs text-slate-300 shrink-0">
+          <div class="flex items-center space-x-2 truncate">
+            <i class="fa-solid fa-reply text-brand-400"></i>
+            <div class="truncate">
+              <span class="font-semibold text-brand-400" id="reply-partner-name">Ответ:</span>
+              <span class="text-slate-400 ml-1" id="reply-text-preview">...</span>
+            </div>
+          </div>
+          <button id="cancel-reply-btn" class="text-slate-400 hover:text-white p-1">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Selected Image Preview Bar (Hidden by default) -->
+        <div id="image-preview-bar" class="hidden px-4 py-2 bg-slate-800 border-t border-slate-700 flex items-center justify-between shrink-0">
+          <div class="flex items-center space-x-3 overflow-hidden">
+            <img id="image-preview-thumb" src="" class="w-12 h-12 object-cover rounded-lg border border-slate-600">
+            <div class="truncate text-xs">
+              <p class="text-slate-200 font-medium truncate" id="image-preview-name">image.png</p>
+              <p class="text-brand-400 text-[11px]">Готово к отправке</p>
+            </div>
+          </div>
+          <button id="cancel-image-btn" class="w-7 h-7 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 flex items-center justify-center">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Message Input Bar -->
+        <div class="p-3 sm:p-4 bg-slate-950/90 border-t border-slate-800 shrink-0">
+          <form id="message-form" class="flex items-center space-x-2">
+            <!-- Hidden File Input -->
+            <input type="file" id="image-file-input" accept="image/*" class="hidden">
+
+            <!-- Paperclip Button -->
+            <button type="button" id="paperclip-btn" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-brand-400 flex items-center justify-center transition shrink-0" title="Прикрепить фото">
+              <i class="fa-solid fa-paperclip text-lg"></i>
+            </button>
+
+            <!-- Text Input -->
+            <input type="text" id="message-input" placeholder="Напишите сообщение..." class="flex-1 bg-slate-800 border border-slate-700/70 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 transition">
+
+            <!-- Send Button -->
+            <button type="submit" id="send-msg-btn" class="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/20 active:scale-95 transition shrink-0">
+              <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Modal: Search & Start Chat -->
+  <div id="new-chat-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-lg text-white">Новый диалог</h3>
+        <button id="close-modal-btn" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">Введите точно email зарегистрированного пользователя для начала переписки:</p>
+
+      <div>
+        <input type="email" id="search-email-input" placeholder="friend@example.com" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500">
+      </div>
+
+      <div id="search-error" class="hidden text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-2.5 rounded-lg"></div>
+
+      <button id="start-chat-submit-btn" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm rounded-xl transition">
+        Найти и открыть чат
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Message -->
+  <div id="edit-msg-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+      <h3 class="font-bold text-lg text-white">Редактировать сообщение</h3>
+      <input type="text" id="edit-msg-input" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500">
+      <div class="flex justify-end space-x-2">
+        <button id="cancel-edit-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-medium">Отмена</button>
+        <button id="save-edit-btn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-medium">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Context Menu for Messages -->
+  <div id="context-menu" class="hidden fixed z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1.5 w-44 text-xs font-medium text-slate-200">
+    <button id="ctx-reply" class="w-full px-4 py-2 text-left hover:bg-slate-700/70 flex items-center gap-2">
+      <i class="fa-solid fa-reply text-brand-400"></i> Ответить
+    </button>
+    <button id="ctx-edit" class="w-full px-4 py-2 text-left hover:bg-slate-700/70 flex items-center gap-2">
+      <i class="fa-solid fa-pen text-slate-400"></i> Изменить
+    </button>
+    <div id="ctx-divider" class="border-t border-slate-700/60 my-1"></div>
+    <button id="ctx-delete" class="w-full px-4 py-2 text-left hover:bg-red-500/10 text-red-400 flex items-center gap-2">
+      <i class="fa-solid fa-trash"></i> Удалить
+    </button>
+  </div>
+
+  <!-- Fullscreen Image Lightbox Modal -->
+  <div id="image-lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 overflow-hidden select-none">
+    
+    <!-- Top Lightbox Bar -->
+    <div class="flex items-center justify-between z-10">
+      <!-- Close Button (Top Left) -->
+      <button id="lightbox-close-btn" class="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white flex items-center justify-center transition shadow-lg">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+
+      <!-- Zoom Controls -->
+      <div class="flex items-center space-x-1 bg-slate-800/80 rounded-full px-3 py-1 shadow-lg">
+        <button id="lightbox-zoom-out" class="w-8 h-8 rounded-full hover:bg-slate-700 text-white flex items-center justify-center">
+          <i class="fa-solid fa-minus text-xs"></i>
+        </button>
+        <span id="lightbox-zoom-level" class="text-xs text-slate-300 font-mono w-12 text-center">100%</span>
+        <button id="lightbox-zoom-in" class="w-8 h-8 rounded-full hover:bg-slate-700 text-white flex items-center justify-center">
+          <i class="fa-solid fa-plus text-xs"></i>
+        </button>
+        <button id="lightbox-zoom-reset" class="w-8 h-8 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs">
+          1:1
+        </button>
+      </div>
+
+      <!-- Download Button (Top Right) -->
+      <a id="lightbox-download-btn" target="_blank" download="image.jpg" class="w-10 h-10 rounded-full bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center transition shadow-lg">
+        <i class="fa-solid fa-download text-base"></i>
+      </a>
+    </div>
+
+    <!-- Image Canvas Container -->
+    <div id="lightbox-container" class="flex-1 flex items-center justify-center overflow-hidden relative cursor-grab active:cursor-grabbing">
+      <img id="lightbox-img" src="" alt="Enlarged preview" class="max-w-full max-h-full object-contain transition-transform duration-100 ease-out rounded-sm">
+    </div>
+
+    <!-- Bottom Caption Bar -->
+    <div id="lightbox-caption-bar" class="text-center text-xs text-slate-300 bg-slate-900/60 py-2 px-4 rounded-xl max-w-lg mx-auto backdrop-blur shrink-0 hidden">
+      <p id="lightbox-caption-text"></p>
+    </div>
+  </div>
+
+  <!-- Firebase & App Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      signInWithPopup, 
+      GoogleAuthProvider, 
+      signOut, 
+      onAuthStateChanged,
+      updateProfile 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, 
+      doc, 
+      setDoc, 
+      getDoc, 
+      addDoc, 
+      updateDoc, 
+      deleteDoc, 
+      collection, 
+      onSnapshot, 
+      serverTimestamp,
+      query,
+      where,
+      getDocs 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global Constants
+    const IMGBB_API_KEY = "55d98bafba3880bb920a9b9cec7b5545";
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    // Firebase Init
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // App State
+    let currentUser = null;
+    let currentChatId = null;
+    let partnerData = null;
+    let selectedImageFile = null;
+    let activeReplyMsg = null;
+    let activeContextMsg = null;
+    let chatsUnsubscribe = null;
+    let messagesUnsubscribe = null;
+
+    // Lightbox Zoom & Pan State
+    let lightboxScale = 1;
+    let lightboxPanX = 0;
+    let lightboxPanY = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    // DOM Elements
+    const authScreen = document.getElementById('auth-screen');
+    const authForm = document.getElementById('auth-form');
+    const tabLoginBtn = document.getElementById('tab-login-btn');
+    const tabRegisterBtn = document.getElementById('tab-register-btn');
+    const nameFieldWrapper = document.getElementById('name-field-wrapper');
+    const authError = document.getElementById('auth-error');
+    const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const googleAuthBtn = document.getElementById('google-auth-btn');
+
+    const sidebar = document.getElementById('sidebar');
+    const chatsList = document.getElementById('chats-list');
+    const chatCountBadge = document.getElementById('chat-count-badge');
+    const currentUserAvatar = document.getElementById('current-user-avatar');
+    const currentUserName = document.getElementById('current-user-name');
+    const currentUserEmail = document.getElementById('current-user-email');
+
+    const noChatSelected = document.getElementById('no-chat-selected');
+    const messagesContainer = document.getElementById('messages-container');
+    const partnerAvatar = document.getElementById('partner-avatar');
+    const partnerName = document.getElementById('partner-name');
+    const backToSidebarBtn = document.getElementById('back-to-sidebar-btn');
+
+    const paperclipBtn = document.getElementById('paperclip-btn');
+    const imageFileInput = document.getElementById('image-file-input');
+    const imagePreviewBar = document.getElementById('image-preview-bar');
+    const imagePreviewThumb = document.getElementById('image-preview-thumb');
+    const imagePreviewName = document.getElementById('image-preview-name');
+    const cancelImageBtn = document.getElementById('cancel-image-btn');
+
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const sendMsgBtn = document.getElementById('send-msg-btn');
+
+    const replyPreviewBar = document.getElementById('reply-preview-bar');
+    const replyPartnerName = document.getElementById('reply-partner-name');
+    const replyTextPreview = document.getElementById('reply-text-preview');
+    const cancelReplyBtn = document.getElementById('cancel-reply-btn');
+
+    const contextMenu = document.getElementById('context-menu');
+    const ctxReply = document.getElementById('ctx-reply');
+    const ctxEdit = document.getElementById('ctx-edit');
+    const ctxDelete = document.getElementById('ctx-delete');
+
+    const editMsgModal = document.getElementById('edit-msg-modal');
+    const editMsgInput = document.getElementById('edit-msg-input');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const saveEditBtn = document.getElementById('save-edit-btn');
+
+    const newChatModal = document.getElementById('new-chat-modal');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const emptyStartChatBtn = document.getElementById('empty-start-chat-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const searchEmailInput = document.getElementById('search-email-input');
+    const searchError = document.getElementById('search-error');
+    const startChatSubmitBtn = document.getElementById('start-chat-submit-btn');
+
+    // Lightbox DOM Elements
+    const lightboxModal = document.getElementById('image-lightbox-modal');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+    const lightboxDownloadBtn = document.getElementById('lightbox-download-btn');
+    const lightboxZoomIn = document.getElementById('lightbox-zoom-in');
+    const lightboxZoomOut = document.getElementById('lightbox-zoom-out');
+    const lightboxZoomReset = document.getElementById('lightbox-zoom-reset');
+    const lightboxZoomLevel = document.getElementById('lightbox-zoom-level');
+    const lightboxContainer = document.getElementById('lightbox-container');
+    const lightboxCaptionBar = document.getElementById('lightbox-caption-bar');
+    const lightboxCaptionText = document.getElementById('lightbox-caption-text');
+
+    let isRegisterMode = false;
+
+    // --- AUTH LOGIC ---
+    tabLoginBtn.addEventListener('click', () => {
+      isRegisterMode = false;
+      tabLoginBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-brand-600 text-white transition-all";
+      tabRegisterBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+      nameFieldWrapper.classList.add('hidden');
+      authSubmitBtn.textContent = "Войти";
+      authError.classList.add('hidden');
+    });
+
+    tabRegisterBtn.addEventListener('click', () => {
+      isRegisterMode = true;
+      tabRegisterBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-brand-600 text-white transition-all";
+      tabLoginBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+      nameFieldWrapper.classList.remove('hidden');
+      authSubmitBtn.textContent = "Зарегистрироваться";
+      authError.classList.add('hidden');
+    });
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const name = document.getElementById('auth-name').value.trim();
+
+      authError.classList.add('hidden');
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i>`;
+
+      try {
+        if (isRegisterMode) {
+          const res = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(res.user, { displayName: name || email.split('@')[0] });
+          await saveUserToPublicCollection(res.user);
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (err) {
+        authError.textContent = getAuthErrorMessage(err.code);
+        authError.classList.remove('hidden');
+      } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = isRegisterMode ? "Зарегистрироваться" : "Войти";
+      }
+    });
+
+    googleAuthBtn.addEventListener('click', async () => {
+      try {
+        const provider = new GoogleAuthProvider();
+        const res = await signInWithPopup(auth, provider);
+        await saveUserToPublicCollection(res.user);
+      } catch (err) {
+        authError.textContent = "Ошибка входа через Google";
+        authError.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      signOut(auth);
+    });
+
+    function getAuthErrorMessage(code) {
+      switch (code) {
+        case 'auth/invalid-credential': return 'Неверный email или пароль.';
+        case 'auth/email-already-in-use': return 'Пользователь с таким email уже существует.';
+        case 'auth/weak-password': return 'Пароль должен быть не менее 6 символов.';
+        default: return 'Произошла ошибка при аутентификации.';
+      }
+    }
+
+    async function saveUserToPublicCollection(user) {
+      const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid);
+      await setDoc(userRef, {
+        uid: user.uid,
+        displayName: user.displayName || user.email.split('@')[0],
+        email: user.email.toLowerCase(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+
+    // Monitor Auth State
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      if (user) {
+        authScreen.classList.add('hidden');
+        currentUserName.textContent = user.displayName || user.email.split('@')[0];
+        currentUserEmail.textContent = user.email;
+        currentUserAvatar.textContent = (user.displayName || user.email)[0].toUpperCase();
+        await saveUserToPublicCollection(user);
+        subscribeToChats();
+      } else {
+        authScreen.classList.remove('hidden');
+        if (chatsUnsubscribe) chatsUnsubscribe();
+        if (messagesUnsubscribe) messagesUnsubscribe();
+        currentChatId = null;
+      }
+    });
+
+    // --- REALTIME CHATS LIST ---
+    function subscribeToChats() {
+      if (!currentUser) return;
+      const chatsRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats');
+
+      chatsUnsubscribe = onSnapshot(chatsRef, (snapshot) => {
+        const userChats = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.participants && data.participants.includes(currentUser.uid)) {
+            userChats.push({ id: docSnap.id, ...data });
+          }
+        });
+
+        chatCountBadge.textContent = userChats.length;
+        renderChatsList(userChats);
+      }, (err) => {
+        console.error("Chats Snapshot error:", err);
+      });
+    }
+
+    function renderChatsList(chats) {
+      chatsList.innerHTML = '';
+
+      if (chats.length === 0) {
+        chatsList.innerHTML = `
+          <div class="p-8 text-center text-slate-500 text-xs">
+            У вас пока нет диалогов.<br>Нажмите «+» чтобы начать.
+          </div>
+        `;
+        return;
+      }
+
+      chats.sort((a, b) => (b.lastUpdated?.seconds || 0) - (a.lastUpdated?.seconds || 0));
+
+      chats.forEach(chat => {
+        const partnerUid = chat.participants.find(id => id !== currentUser.uid);
+        const partnerInfo = chat.participantDetails?.[partnerUid] || { name: 'Собеседник', email: '' };
+
+        const isUnread = chat.lastSenderId && chat.lastSenderId !== currentUser.uid && !chat.isRead;
+
+        const item = document.createElement('div');
+        item.className = `p-3.5 sm:p-4 flex items-center space-x-3 cursor-pointer hover:bg-slate-800/60 transition ${currentChatId === chat.id ? 'bg-slate-800/90 border-l-4 border-brand-500' : ''}`;
+
+        item.innerHTML = `
+          <div class="relative shrink-0">
+            <div class="w-11 h-11 rounded-full bg-slate-700 text-slate-100 flex items-center justify-center font-bold text-base shadow">
+              ${partnerInfo.name[0]?.toUpperCase() || '?'}
+            </div>
+            ${isUnread ? `<span class="absolute top-0 right-0 w-3.5 h-3.5 bg-brand-500 rounded-full border-2 border-slate-950"></span>` : ''}
+          </div>
+          <div class="flex-1 overflow-hidden">
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="font-semibold text-xs text-slate-100 truncate">${escapeHTML(partnerInfo.name)}</h4>
+              <span class="text-[10px] text-slate-500">${formatTimestamp(chat.lastUpdated)}</span>
+            </div>
+            <p class="text-xs ${isUnread ? 'text-white font-medium' : 'text-slate-400'} truncate">
+              ${chat.lastMessage || 'Начните переписку'}
+            </p>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          openChat(chat.id, partnerInfo);
+        });
+
+        chatsList.appendChild(item);
+      });
+    }
+
+    // --- OPEN CHAT & REALTIME MESSAGES ---
+    function openChat(chatId, partner) {
+      currentChatId = chatId;
+      partnerData = partner;
+
+      partnerName.textContent = partner.name;
+      partnerAvatar.textContent = partner.name[0]?.toUpperCase() || '?';
+      noChatSelected.classList.add('hidden');
+
+      if (window.innerWidth < 768) {
+        sidebar.classList.add('-translate-x-full', 'absolute');
+      }
+
+      subscribeToMessages(chatId);
+      markChatAsRead(chatId);
+      resetReply();
+      resetImagePreview();
+    }
+
+    backToSidebarBtn.addEventListener('click', () => {
+      sidebar.classList.remove('-translate-x-full', 'absolute');
+    });
+
+    function subscribeToMessages(chatId) {
+      if (messagesUnsubscribe) messagesUnsubscribe();
+
+      const msgsRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', chatId, 'messages');
+
+      messagesUnsubscribe = onSnapshot(msgsRef, (snapshot) => {
+        const msgs = [];
+        snapshot.forEach((docSnap) => {
+          msgs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        msgs.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+
+        renderMessages(msgs);
+        markUnreadMessagesAsRead(msgs);
+      }, (err) => {
+        console.error("Messages Snapshot Error:", err);
+      });
+    }
+
+    function renderMessages(messages) {
+      messagesContainer.innerHTML = '';
+
+      if (messages.length === 0) {
+        messagesContainer.innerHTML = `
+          <div class="h-full flex items-center justify-center text-slate-500 text-xs">
+            Здесь пока нет сообщений. Напишите первым!
+          </div>
+        `;
+        return;
+      }
+
+      messages.forEach(msg => {
+        const isMe = msg.senderId === currentUser.uid;
+        const msgWrapper = document.createElement('div');
+        msgWrapper.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-2 group`;
+
+        const bubble = document.createElement('div');
+        bubble.className = `max-w-[85%] sm:max-w-[70%] rounded-2xl p-2.5 sm:p-3 relative shadow-md transition-all ${
+          isMe ? 'bg-brand-600 text-white rounded-br-xs' : 'bg-slate-800 text-slate-100 rounded-bl-xs border border-slate-700/50'
+        }`;
+
+        // Quoted Reply Preview inside bubble
+        let replyHTML = '';
+        if (msg.replyTo) {
+          replyHTML = `
+            <div class="mb-2 p-2 rounded-lg text-xs ${isMe ? 'bg-brand-700/60 border-l-2 border-white/60' : 'bg-slate-900/60 border-l-2 border-brand-400'} truncate">
+              <span class="font-bold opacity-80 block text-[10px]">${escapeHTML(msg.replyTo.senderName)}</span>
+              <span class="opacity-90 italic truncate">${escapeHTML(msg.replyTo.text)}</span>
+            </div>
+          `;
+        }
+
+        // Image or Text Content
+        let contentHTML = '';
+        if (msg.type === 'image') {
+          contentHTML = `
+            <div class="relative overflow-hidden rounded-xl bg-black/20 group/img cursor-pointer">
+              <img src="${escapeHTML(msg.mediaUrl)}" alt="Photo" class="max-h-72 w-auto object-cover rounded-xl transition hover:scale-[1.02]" loading="lazy">
+            </div>
+            ${msg.text ? `<p class="mt-2 text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(msg.text)}</p>` : ''}
+          `;
+        } else {
+          contentHTML = `<p class="text-sm leading-relaxed whitespace-pre-wrap">${escapeHTML(msg.text)}</p>`;
+        }
+
+        // Ticks status
+        let ticksHTML = '';
+        if (isMe) {
+          if (msg.isRead) {
+            ticksHTML = `<span class="text-sky-300 font-bold ml-1 text-[11px]" title="Прочитано">✓✓</span>`;
+          } else {
+            ticksHTML = `<span class="text-white/70 font-bold ml-1 text-[11px]" title="Отправлено">✓</span>`;
+          }
+        }
+
+        bubble.innerHTML = `
+          ${replyHTML}
+          ${contentHTML}
+          <div class="flex items-center justify-end space-x-1 mt-1 text-[10px] ${isMe ? 'text-white/70' : 'text-slate-400'}">
+            <span>${formatTimestamp(msg.createdAt)}</span>
+            ${ticksHTML}
+          </div>
+        `;
+
+        // Click on image to open Lightbox
+        if (msg.type === 'image') {
+          const imgEl = bubble.querySelector('img');
+          if (imgEl) {
+            imgEl.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openLightbox(msg.mediaUrl, msg.text || '');
+            });
+          }
+        }
+
+        // Context menu handler (Desktop Right-Click & Mobile Long-Press)
+        bubble.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          showContextMenu(e.clientX, e.clientY, msg, isMe);
+        });
+
+        // Touch Long Press
+        let touchTimer;
+        bubble.addEventListener('touchstart', (e) => {
+          touchTimer = setTimeout(() => {
+            const touch = e.touches[0];
+            showContextMenu(touch.clientX, touch.clientY, msg, isMe);
+          }, 500);
+        });
+        bubble.addEventListener('touchend', () => clearTimeout(touchTimer));
+        bubble.addEventListener('touchmove', () => clearTimeout(touchTimer));
+
+        msgWrapper.appendChild(bubble);
+        messagesContainer.appendChild(msgWrapper);
+      });
+
+      // Auto scroll to bottom
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // --- IMGBB FILE UPLOAD LOGIC ---
+    paperclipBtn.addEventListener('click', () => {
+      imageFileInput.click();
+    });
+
+    imageFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('Пожалуйста, выберите файл изображения.');
+        return;
+      }
+
+      selectedImageFile = file;
+      imagePreviewName.textContent = file.name;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        imagePreviewThumb.src = event.target.result;
+        imagePreviewBar.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    cancelImageBtn.addEventListener('click', resetImagePreview);
+
+    function resetImagePreview() {
+      selectedImageFile = null;
+      imageFileInput.value = '';
+      imagePreviewBar.classList.add('hidden');
+      imagePreviewThumb.src = '';
+    }
+
+    async function uploadImageToImgBB(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data && data.success) {
+        return data.data.url;
+      } else {
+        throw new Error(data.error?.message || 'Ошибка загрузки изображения');
+      }
+    }
+
+    // --- SEND MESSAGE LOGIC ---
+    messageForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = messageInput.value.trim();
+
+      if (!text && !selectedImageFile) return;
+      if (!currentChatId) return;
+
+      sendMsgBtn.disabled = true;
+      sendMsgBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i>`;
+
+      try {
+        let mediaUrl = null;
+        let type = 'text';
+
+        // Upload image if attached
+        if (selectedImageFile) {
+          mediaUrl = await uploadImageToImgBB(selectedImageFile);
+          type = 'image';
+        }
+
+        const msgData = {
+          senderId: currentUser.uid,
+          text: text,
+          type: type,
+          createdAt: serverTimestamp(),
+          isRead: false
+        };
+
+        if (mediaUrl) msgData.mediaUrl = mediaUrl;
+
+        if (activeReplyMsg) {
+          msgData.replyTo = {
+            id: activeReplyMsg.id,
+            senderName: activeReplyMsg.senderId === currentUser.uid ? 'Вы' : partnerData.name,
+            text: activeReplyMsg.type === 'image' ? '📷 Фотография' : activeReplyMsg.text
+          };
+        }
+
+        // Save message to subcollection
+        const msgsRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages');
+        await addDoc(msgsRef, msgData);
+
+        // Update chat metadata
+        const chatRef = doc(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId);
+        const lastMsgText = type === 'image' ? (text ? `📷 ${text}` : '📷 Фотография') : text;
+
+        await updateDoc(chatRef, {
+          lastMessage: lastMsgText,
+          lastSenderId: currentUser.uid,
+          lastUpdated: serverTimestamp(),
+          isRead: false
+        });
+
+        messageInput.value = '';
+        resetImagePreview();
+        resetReply();
+
+      } catch (err) {
+        console.error("Send Error:", err);
+        alert("Не удалось отправить сообщение. Попробуйте еще раз.");
+      } finally {
+        sendMsgBtn.disabled = false;
+        sendMsgBtn.innerHTML = `<i class="fa-solid fa-paper-plane text-sm"></i>`;
+      }
+    });
+
+    // --- REPLY LOGIC ---
+    function setReplyMessage(msg) {
+      activeReplyMsg = msg;
+      replyPartnerName.textContent = msg.senderId === currentUser.uid ? 'Ответ себе:' : `Ответ ${partnerData.name}:`;
+      replyTextPreview.textContent = msg.type === 'image' ? '📷 Фотография' : msg.text;
+      replyPreviewBar.classList.remove('hidden');
+      messageInput.focus();
+    }
+
+    cancelReplyBtn.addEventListener('click', resetReply);
+
+    function resetReply() {
+      activeReplyMsg = null;
+      replyPreviewBar.classList.add('hidden');
+    }
+
+    // --- READ STATUS UPDATES ---
+    async function markChatAsRead(chatId) {
+      const chatRef = doc(db, 'artifacts', appId, 'public', 'data', 'chats', chatId);
+      const chatSnap = await getDoc(chatRef);
+      if (chatSnap.exists() && chatSnap.data().lastSenderId !== currentUser.uid) {
+        await updateDoc(chatRef, { isRead: true });
+      }
+    }
+
+    async function markUnreadMessagesAsRead(messages) {
+      messages.forEach(async (msg) => {
+        if (msg.senderId !== currentUser.uid && !msg.isRead) {
+          const msgRef = doc(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages', msg.id);
+          await updateDoc(msgRef, { isRead: true });
+        }
+      });
+    }
+
+    // --- CONTEXT MENU (EDIT / REPLY / DELETE) ---
+    function showContextMenu(x, y, msg, isMe) {
+      activeContextMsg = msg;
+
+      ctxEdit.style.display = isMe && msg.type !== 'image' ? 'flex' : 'none';
+      ctxDelete.style.display = isMe ? 'flex' : 'none';
+      document.getElementById('ctx-divider').style.display = isMe ? 'block' : 'none';
+
+      contextMenu.style.left = `${Math.min(x, window.innerWidth - 180)}px`;
+      contextMenu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+      contextMenu.classList.remove('hidden');
+    }
+
+    document.addEventListener('click', () => {
+      contextMenu.classList.add('hidden');
+    });
+
+    ctxReply.addEventListener('click', () => {
+      if (activeContextMsg) setReplyMessage(activeContextMsg);
+    });
+
+    ctxEdit.addEventListener('click', () => {
+      if (!activeContextMsg) return;
+      editMsgInput.value = activeContextMsg.text || '';
+      editMsgModal.classList.remove('hidden');
+    });
+
+    cancelEditBtn.addEventListener('click', () => {
+      editMsgModal.classList.add('hidden');
+    });
+
+    saveEditBtn.addEventListener('click', async () => {
+      const newText = editMsgInput.value.trim();
+      if (!newText || !activeContextMsg) return;
+
+      const msgRef = doc(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages', activeContextMsg.id);
+      await updateDoc(msgRef, { text: newText });
+
+      editMsgModal.classList.add('hidden');
+    });
+
+    ctxDelete.addEventListener('click', async () => {
+      if (!activeContextMsg) return;
+
+      const msgRef = doc(db, 'artifacts', appId, 'public', 'data', 'chats', currentChatId, 'messages', activeContextMsg.id);
+      await deleteDoc(msgRef);
+    });
+
+    // --- LIGHTBOX MODAL & ZOOM/PAN LOGIC ---
+    function openLightbox(url, caption) {
+      lightboxImg.src = url;
+      lightboxDownloadBtn.href = url;
+
+      if (caption) {
+        lightboxCaptionText.textContent = caption;
+        lightboxCaptionBar.classList.remove('hidden');
+      } else {
+        lightboxCaptionBar.classList.add('hidden');
+      }
+
+      resetLightboxTransform();
+      lightboxModal.classList.remove('hidden');
+    }
+
+    lightboxCloseBtn.addEventListener('click', () => {
+      lightboxModal.classList.add('hidden');
+    });
+
+    function updateLightboxTransform() {
+      lightboxImg.style.transform = `translate(${lightboxPanX}px, ${lightboxPanY}px) scale(${lightboxScale})`;
+      lightboxZoomLevel.textContent = `${Math.round(lightboxScale * 100)}%`;
+    }
+
+    function resetLightboxTransform() {
+      lightboxScale = 1;
+      lightboxPanX = 0;
+      lightboxPanY = 0;
+      updateLightboxTransform();
+    }
+
+    lightboxZoomIn.addEventListener('click', () => {
+      lightboxScale = Math.min(lightboxScale + 0.25, 4);
+      updateLightboxTransform();
+    });
+
+    lightboxZoomOut.addEventListener('click', () => {
+      lightboxScale = Math.max(lightboxScale - 0.25, 0.5);
+      updateLightboxTransform();
+    });
+
+    lightboxZoomReset.addEventListener('click', resetLightboxTransform);
+
+    // Mouse Wheel Zoom
+    lightboxContainer.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        lightboxScale = Math.min(lightboxScale + 0.15, 4);
+      } else {
+        lightboxScale = Math.max(lightboxScale - 0.15, 0.5);
+      }
+      updateLightboxTransform();
+    });
+
+    // Drag / Pan Image
+    lightboxContainer.addEventListener('mousedown', (e) => {
+      if (e.target === lightboxCloseBtn || lightboxCloseBtn.contains(e.target)) return;
+      isDragging = true;
+      startX = e.clientX - lightboxPanX;
+      startY = e.clientY - lightboxPanY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      lightboxPanX = e.clientX - startX;
+      lightboxPanY = e.clientY - startY;
+      updateLightboxTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // --- SEARCH & START NEW CHAT ---
+    const openSearchModal = () => {
+      newChatModal.classList.remove('hidden');
+      searchEmailInput.value = '';
+      searchError.classList.add('hidden');
+      searchEmailInput.focus();
+    };
+
+    newChatBtn.addEventListener('click', openSearchModal);
+    emptyStartChatBtn.addEventListener('click', openSearchModal);
+
+    closeModalBtn.addEventListener('click', () => {
+      newChatModal.classList.add('hidden');
+    });
+
+    startChatSubmitBtn.addEventListener('click', async () => {
+      const email = searchEmailInput.value.trim().toLowerCase();
+      if (!email) return;
+
+      if (email === currentUser.email.toLowerCase()) {
+        searchError.textContent = "Нельзя начать чат с самим собой.";
+        searchError.classList.remove('hidden');
+        return;
+      }
+
+      startChatSubmitBtn.disabled = true;
+      startChatSubmitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i>`;
+      searchError.classList.add('hidden');
+
+      try {
+        const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
+        const q = query(usersRef, where('email', '==', email));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          searchError.textContent = "Пользователь с таким email не найден.";
+          searchError.classList.remove('hidden');
+          return;
+        }
+
+        const targetUser = querySnapshot.docs[0].data();
+
+        // Check if chat already exists
+        const chatId = [currentUser.uid, targetUser.uid].sort().join('_');
+        const chatRef = doc(db, 'artifacts', appId, 'public', 'data', 'chats', chatId);
+        const chatSnap = await getDoc(chatRef);
+
+        if (!chatSnap.exists()) {
+          await setDoc(chatRef, {
+            participants: [currentUser.uid, targetUser.uid],
+            participantDetails: {
+              [currentUser.uid]: { name: currentUser.displayName || currentUser.email.split('@')[0], email: currentUser.email },
+              [targetUser.uid]: { name: targetUser.displayName || targetUser.email.split('@')[0], email: targetUser.email }
+            },
+            lastMessage: '',
+            lastSenderId: '',
+            lastUpdated: serverTimestamp(),
+            isRead: true
+          });
+        }
+
+        newChatModal.classList.add('hidden');
+        openChat(chatId, { name: targetUser.displayName || targetUser.email.split('@')[0], email: targetUser.email });
+
+      } catch (err) {
+        console.error("Search Chat Error:", err);
+        searchError.textContent = "Ошибка при поиске.";
+        searchError.classList.remove('hidden');
+      } finally {
+        startChatSubmitBtn.disabled = false;
+        startChatSubmitBtn.textContent = "Найти и открыть чат";
+      }
+    });
+
+    // --- UTILS ---
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return '';
+      const date = ts.seconds ? new Date(ts.seconds * 1000) : new Date();
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  </script>
+</body>
+</html>
