@@ -67,14 +67,14 @@
       border-bottom-left-radius: 2px;
     }
 
-    .msg-bubble {
+    .msg-bubble, .chat-item-node {
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
     }
   </style>
 </head>
-<body class="h-full overflow-hidden antialiased font-sans flex flex-col bg-slate-950 text-slate-100 selection:bg-blue-500 selection:text-white" onclick="closeContextMenu()">
+<body class="h-full overflow-hidden antialiased font-sans flex flex-col bg-slate-950 text-slate-100 selection:bg-blue-500 selection:text-white" onclick="closeContextMenu(); closeChatHeaderMenu();">
 
   <!-- ================= AUTH MODAL / OVERLAY ================= -->
   <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-opacity duration-300 hidden">
@@ -211,22 +211,35 @@
 
       <div id="active-chat-container" class="flex-1 flex flex-col h-full hidden">
         
-        <!-- Partner Top Header (Clickable) -->
-        <div onclick="openPartnerProfileModal()" class="px-4 py-3 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 cursor-pointer hover:bg-slate-800/50 transition">
-          <div class="flex items-center space-x-3">
-            <button onclick="event.stopPropagation(); closeActiveChatMobile()" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center mr-1">
+        <!-- Partner Top Header -->
+        <div class="px-4 py-3 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex items-center justify-between flex-shrink-0">
+          <div onclick="openPartnerProfileModal()" class="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition flex-1 min-w-0 pr-2">
+            <button onclick="event.stopPropagation(); closeActiveChatMobile()" class="md:hidden w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center mr-1 flex-shrink-0">
               <i class="fa-solid fa-arrow-left"></i>
             </button>
-            <div class="relative">
+            <div class="relative flex-shrink-0">
               <img id="chat-header-avatar" src="https://placehold.co/100x100/3b82f6/ffffff?text=U" class="w-10 h-10 rounded-full object-cover border border-slate-700">
             </div>
-            <div>
-              <h2 id="chat-header-name" class="font-semibold text-sm text-white">Собеседник</h2>
-              <p id="chat-header-email" class="text-xs text-slate-400">Нажмите для просмотра профиля</p>
+            <div class="min-w-0">
+              <h2 id="chat-header-name" class="font-semibold text-sm text-white truncate">Собеседник</h2>
+              <p id="chat-header-email" class="text-xs text-slate-400 truncate">Нажмите для просмотра профиля</p>
             </div>
           </div>
-          <div class="text-slate-400">
-            <i class="fa-solid fa-circle-info text-lg"></i>
+          
+          <!-- Header Options (3 dots menu) -->
+          <div class="relative flex-shrink-0">
+            <button onclick="toggleChatHeaderMenu(event)" class="w-9 h-9 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
+              <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+            </button>
+            <div id="chat-header-menu" class="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-xl py-1 hidden z-30">
+              <button onclick="openPartnerProfileModal()" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-user text-slate-400"></i> Профиль собеседника
+              </button>
+              <div class="border-t border-slate-700/60 my-1"></div>
+              <button onclick="deleteActiveChat()" class="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/20 flex items-center gap-2">
+                <i class="fa-solid fa-trash"></i> Удалить чат
+              </button>
+            </div>
           </div>
         </div>
 
@@ -415,7 +428,7 @@
   </div>
 
   <!-- ================= CONTEXT MENU ================= -->
-  <div id="context-menu" class="fixed z-50 w-44 bg-slate-800/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-xl p-1.5 hidden flex-col space-y-0.5 text-xs">
+  <div id="context-menu" class="fixed z-50 w-48 bg-slate-800/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-xl p-1.5 hidden flex-col space-y-0.5 text-xs">
     <button id="menu-reply-btn" onclick="executeMenuAction('reply')" class="flex items-center gap-2 px-3 py-2 text-slate-200 hover:bg-slate-700/70 rounded-lg transition w-full text-left">
       <i class="fa-solid fa-reply text-blue-400"></i> Ответить
     </button>
@@ -423,7 +436,10 @@
       <i class="fa-solid fa-pen text-amber-400"></i> Изменить
     </button>
     <button id="menu-delete-btn" onclick="executeMenuAction('delete')" class="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition w-full text-left">
-      <i class="fa-solid fa-trash"></i> Удалить
+      <i class="fa-solid fa-trash"></i> Удалить сообщение
+    </button>
+    <button id="menu-delete-chat-btn" onclick="executeMenuAction('deleteChat')" class="flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-lg transition w-full text-left">
+      <i class="fa-solid fa-trash-can"></i> Удалить чат
     </button>
   </div>
 
@@ -505,7 +521,7 @@
     let userProfileUnsubscribe = null;
     let allUsersCache = [];
 
-    let activeMessageTarget = null;
+    let activeContextMenuTarget = null; // Can be { type: 'message', ... } or { type: 'chat', chatId }
     let actionState = null;
     let longPressTimer = null;
     let newAvatarUrlTemp = null;
@@ -531,6 +547,12 @@
     window.openImageModal = openImageModal;
     window.closeImageModal = closeImageModal;
     
+    // Header Menu & Chat Delete
+    window.toggleChatHeaderMenu = toggleChatHeaderMenu;
+    window.closeChatHeaderMenu = closeChatHeaderMenu;
+    window.deleteActiveChat = deleteActiveChat;
+    window.deleteChatById = deleteChatById;
+
     // Profile functions
     window.openMyProfileModal = openMyProfileModal;
     window.closeMyProfileModal = closeMyProfileModal;
@@ -743,7 +765,6 @@
     async function openPartnerProfileModal() {
       if (!activePartner) return;
       
-      // Get fresh data
       try {
         const partnerSnap = await getDoc(doc(db, 'users', activePartner.uid));
         const partnerData = partnerSnap.exists() ? partnerSnap.data() : activePartner;
@@ -761,6 +782,17 @@
 
     function closePartnerProfileModal() {
       document.getElementById('partner-profile-modal').classList.add('hidden');
+    }
+
+    function toggleChatHeaderMenu(e) {
+      e.stopPropagation();
+      const menu = document.getElementById('chat-header-menu');
+      menu.classList.toggle('hidden');
+    }
+
+    function closeChatHeaderMenu() {
+      const menu = document.getElementById('chat-header-menu');
+      if (menu) menu.classList.add('hidden');
     }
 
     function listenToUserChats() {
@@ -783,6 +815,10 @@
           chatsList.appendChild(emptyState);
           emptyState.classList.remove('hidden');
           document.getElementById('chats-count').textContent = '0';
+          
+          if (activeChatId) {
+            clearActiveChatView();
+          }
           return;
         }
 
@@ -810,14 +846,34 @@
 
         chats.sort((a, b) => b.updatedAt - a.updatedAt);
 
+        // Check if currently active chat was deleted
+        if (activeChatId && !chats.some(c => c.id === activeChatId)) {
+          clearActiveChatView();
+        }
+
         chatsList.innerHTML = '';
         chats.forEach(chat => {
           const isActive = chat.id === activeChatId;
           const timeStr = chat.updatedAt ? formatTime(chat.updatedAt) : '';
 
           const item = document.createElement('div');
-          item.className = `p-3.5 flex items-center space-x-3 cursor-pointer transition border-b border-slate-800/40 hover:bg-slate-800/40 ${isActive ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`;
+          item.className = `chat-item-node p-3.5 flex items-center space-x-3 cursor-pointer transition border-b border-slate-800/40 hover:bg-slate-800/40 ${isActive ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`;
           item.onclick = () => selectChat(chat.id, chat.partner);
+
+          item.oncontextmenu = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openContextMenu(e.clientX, e.clientY, { type: 'chat', chatId: chat.id });
+          };
+
+          item.ontouchstart = (e) => {
+            longPressTimer = setTimeout(() => {
+              const touch = e.touches[0];
+              openContextMenu(touch.clientX, touch.clientY, { type: 'chat', chatId: chat.id });
+            }, 500);
+          };
+          item.ontouchend = () => clearTimeout(longPressTimer);
+          item.ontouchmove = () => clearTimeout(longPressTimer);
 
           item.innerHTML = `
             <img src="${chat.partner.photoURL}" class="w-12 h-12 rounded-full object-cover border border-slate-700/60 flex-shrink-0">
@@ -945,7 +1001,13 @@
 
     function closeActiveChatMobile() {
       document.getElementById('chat-window-panel').classList.add('translate-x-full');
+      clearActiveChatView();
+    }
+
+    function clearActiveChatView() {
+      if (messagesUnsubscribe) messagesUnsubscribe();
       activeChatId = null;
+      activePartner = null;
       cancelActionState();
 
       const noChatEl = document.getElementById('no-chat-selected');
@@ -955,6 +1017,37 @@
       activeChatEl.classList.remove('flex');
       noChatEl.classList.remove('hidden');
       noChatEl.classList.add('flex');
+    }
+
+    async function deleteChatById(chatId) {
+      if (!confirm('Вы действительно хотите удалить этот чат и всю переписку?')) return;
+
+      try {
+        // Delete all messages in the subcollection first
+        const messagesSnap = await getDocs(collection(db, 'chats', chatId, 'messages'));
+        const deletePromises = [];
+        messagesSnap.forEach((msgDoc) => {
+          deletePromises.push(deleteDoc(doc(db, 'chats', chatId, 'messages', msgDoc.id)));
+        });
+        await Promise.all(deletePromises);
+
+        // Delete main chat document
+        await deleteDoc(doc(db, 'chats', chatId));
+
+        if (activeChatId === chatId) {
+          clearActiveChatView();
+        }
+      } catch (err) {
+        console.error("Error deleting chat:", err);
+        alert("Произошла ошибка при удалении чата.");
+      }
+    }
+
+    function deleteActiveChat() {
+      closeChatHeaderMenu();
+      if (activeChatId) {
+        deleteChatById(activeChatId);
+      }
     }
 
     function listenToMessages(chatId) {
@@ -1047,13 +1140,13 @@
           bubbleEl.oncontextmenu = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            openContextMenu(e.clientX, e.clientY, { id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName });
+            openContextMenu(e.clientX, e.clientY, { type: 'message', id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName });
           };
 
           bubbleEl.ontouchstart = (e) => {
             longPressTimer = setTimeout(() => {
               const touch = e.touches[0];
-              openContextMenu(touch.clientX, touch.clientY, { id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName });
+              openContextMenu(touch.clientX, touch.clientY, { type: 'message', id: msg.id, text: msg.type === 'image' ? '[Картинка]' : msg.text, isMe, senderName });
             }, 500);
           };
           bubbleEl.ontouchend = () => clearTimeout(longPressTimer);
@@ -1081,43 +1174,61 @@
       document.getElementById('modal-image-element').src = '';
     }
 
-    function openContextMenu(x, y, msgTarget) {
-      activeMessageTarget = msgTarget;
+    function openContextMenu(x, y, target) {
+      activeContextMenuTarget = target;
       const menu = document.getElementById('context-menu');
+      const replyBtn = document.getElementById('menu-reply-btn');
       const editBtn = document.getElementById('menu-edit-btn');
-      const deleteBtn = document.getElementById('menu-delete-btn');
+      const deleteMsgBtn = document.getElementById('menu-delete-btn');
+      const deleteChatBtn = document.getElementById('menu-delete-chat-btn');
 
-      if (msgTarget.isMe) {
-        editBtn.style.display = 'flex';
-        deleteBtn.style.display = 'flex';
-      } else {
+      if (target.type === 'chat') {
+        replyBtn.style.display = 'none';
         editBtn.style.display = 'none';
-        deleteBtn.style.display = 'none';
+        deleteMsgBtn.style.display = 'none';
+        deleteChatBtn.style.display = 'flex';
+      } else if (target.type === 'message') {
+        replyBtn.style.display = 'flex';
+        deleteChatBtn.style.display = 'none';
+        if (target.isMe) {
+          editBtn.style.display = 'flex';
+          deleteMsgBtn.style.display = 'flex';
+        } else {
+          editBtn.style.display = 'none';
+          deleteMsgBtn.style.display = 'none';
+        }
       }
 
-      menu.style.left = `${Math.min(x, window.innerWidth - 180)}px`;
-      menu.style.top = `${Math.min(y, window.innerHeight - 150)}px`;
+      menu.style.left = `${Math.min(x, window.innerWidth - 190)}px`;
+      menu.style.top = `${Math.min(y, window.innerHeight - 160)}px`;
       menu.classList.remove('hidden');
       menu.classList.add('flex');
     }
 
     function closeContextMenu() {
       const menu = document.getElementById('context-menu');
-      menu.classList.add('hidden');
-      menu.classList.remove('flex');
+      if (menu) {
+        menu.classList.add('hidden');
+        menu.classList.remove('flex');
+      }
     }
 
     function executeMenuAction(action) {
-      if (!activeMessageTarget) return;
+      if (!activeContextMenuTarget) return;
 
-      if (action === 'reply') {
-        actionState = { mode: 'reply', msg: activeMessageTarget };
-        showActionBar(activeMessageTarget.senderName, activeMessageTarget.text);
+      if (action === 'deleteChat') {
+        const chatIdToDelete = activeContextMenuTarget.type === 'chat' ? activeContextMenuTarget.chatId : activeChatId;
+        if (chatIdToDelete) {
+          deleteChatById(chatIdToDelete);
+        }
+      } else if (action === 'reply') {
+        actionState = { mode: 'reply', msg: activeContextMenuTarget };
+        showActionBar(activeContextMenuTarget.senderName, activeContextMenuTarget.text);
         document.getElementById('message-input').focus();
       } else if (action === 'edit') {
-        openEditModal(activeMessageTarget);
+        openEditModal(activeContextMenuTarget);
       } else if (action === 'delete') {
-        deleteMessage(activeMessageTarget.id);
+        deleteMessage(activeContextMenuTarget.id);
       }
       closeContextMenu();
     }
