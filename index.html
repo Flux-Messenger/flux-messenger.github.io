@@ -980,6 +980,7 @@
       }
     }
 
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ ВЫБОРА ЧАТА (автоскрытие списка на мобильных)
     function selectChat(chatId, partner) {
       activeChatId = chatId;
       activePartner = partner;
@@ -997,6 +998,7 @@
       document.getElementById('chat-header-name').textContent = partner.displayName;
       document.getElementById('chat-header-avatar').src = partner.photoURL;
 
+      // Показываем окно чата на мобильных
       document.getElementById('chat-window-panel').classList.remove('translate-x-full');
 
       listenToMessages(chatId);
@@ -1022,16 +1024,19 @@
       noChatEl.classList.add('flex');
     }
 
-    // ИСПРАВЛЕННАЯ ФУНКЦИЯ УДАЛЕНИЯ ЧАТА (без прямого запроса сообщений подколлекции)
     async function deleteChatById(chatId) {
       if (!confirm('Вы действительно хотите удалить этот чат?')) return;
 
       try {
-        // Удаляем сам документ чата
-        await deleteDoc(doc(db, 'chats', chatId));
-
         if (activeChatId === chatId) {
           clearActiveChatView();
+        }
+
+        await deleteDoc(doc(db, 'chats', chatId));
+
+        const chatWindowPanel = document.getElementById('chat-window-panel');
+        if (chatWindowPanel) {
+          chatWindowPanel.classList.add('translate-x-full');
         }
       } catch (err) {
         console.error("Error deleting chat:", err);
