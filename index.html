@@ -601,28 +601,33 @@
 
     async function syncUserProfile(user) {
       if (!user) return;
-      const userRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
-      const defaultLetterPhoto = `https://placehold.co/100x100/3b82f6/ffffff?text=${(user.displayName || user.email || 'U')[0].toUpperCase()}`;
-      const googlePhoto = user.photoURL || defaultLetterPhoto;
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        const defaultLetterPhoto = `https://placehold.co/100x100/3b82f6/ffffff?text=${(user.displayName || user.email || 'U')[0].toUpperCase()}`;
+        const googlePhoto = user.photoURL || defaultLetterPhoto;
 
-      if (!userDoc.exists()) {
-        await setDoc(userRef, {
-          uid: user.uid,
-          displayName: user.displayName || user.email.split('@')[0],
-          email: user.email,
-          photoURL: googlePhoto,
-          googlePhotoURL: googlePhoto,
-          defaultPhotoURL: defaultLetterPhoto,
-          bio: 'Всем привет! Я использую Flux Messenger.',
-          lastSeen: serverTimestamp()
-        });
-      } else {
-        await updateDoc(userRef, { 
-          lastSeen: serverTimestamp(),
-          googlePhotoURL: googlePhoto,
-          defaultPhotoURL: userDoc.data().defaultPhotoURL || defaultLetterPhoto
-        });
+        if (!userDoc.exists()) {
+          await setDoc(userRef, {
+            uid: user.uid,
+            displayName: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            photoURL: googlePhoto,
+            googlePhotoURL: googlePhoto,
+            defaultPhotoURL: defaultLetterPhoto,
+            bio: 'Всем привет! Я использую Flux Messenger.',
+            lastSeen: serverTimestamp()
+          });
+        } else {
+          await setDoc(userRef, { 
+            uid: user.uid,
+            lastSeen: serverTimestamp(),
+            googlePhotoURL: googlePhoto,
+            defaultPhotoURL: userDoc.data().defaultPhotoURL || defaultLetterPhoto
+          }, { merge: true });
+        }
+      } catch (err) {
+        console.error("Sync profile error:", err);
       }
     }
 
