@@ -472,7 +472,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
-      signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, updateProfile
+      signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, updateProfile
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
       getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, 
@@ -1323,7 +1323,13 @@
 
     async function handleGoogleSignIn() {
       const provider = new GoogleAuthProvider();
-      try { await signInWithPopup(auth, provider); } catch (err) {
+      try {
+        if (navigator.userAgent.includes('FluxAndroidApp')) {
+          await signInWithRedirect(auth, provider);
+        } else {
+          await signInWithPopup(auth, provider);
+        }
+      } catch (err) {
         document.getElementById('auth-error-text').textContent = err.message;
         document.getElementById('auth-error').classList.remove('hidden');
       }
