@@ -201,7 +201,7 @@
           
           <div class="flex items-center gap-2">
             <!-- Audio Call Button -->
-            <button onclick="startAudioCall()" class="w-9 h-9 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition" title="Аудиозвонок">
+            <button onclick="startAudioCall()" class="w-9 h-9 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition" title="Звонок">
               <i class="fa-solid fa-phone text-sm"></i>
             </button>
 
@@ -260,48 +260,72 @@
   </div>
 
   <!-- ================= P2P FULLSCREEN CALL OVERLAY ================= -->
-  <div id="call-overlay" class="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-between p-8 hidden">
-    <!-- Background glow elements -->
-    <div class="absolute -top-20 -left-20 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-    <div class="absolute -bottom-20 -right-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+  <div id="call-overlay" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-between p-4 md:p-8 hidden">
+    <!-- Background video container (Full Screen Video) -->
+    <div id="fullscreen-video-container" class="absolute inset-0 bg-slate-900 overflow-hidden hidden flex items-center justify-center">
+      <video id="fullscreen-video" autoplay playsinline class="w-full h-full object-cover"></video>
+      <div id="fullscreen-avatar-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 hidden">
+        <img id="fullscreen-placeholder-img" src="" class="w-28 h-28 rounded-full object-cover border-4 border-slate-800 shadow-2xl mb-3">
+        <h3 id="fullscreen-placeholder-name" class="text-xl font-bold text-white">Имя</h3>
+        <p class="text-xs text-slate-400 mt-1">Камера выключена</p>
+      </div>
+    </div>
 
-    <!-- Top info -->
-    <div class="text-center z-10 pt-6">
+    <!-- Small floating video container (Picture-in-Picture style) -->
+    <div id="pip-video-container" class="absolute top-6 right-6 w-32 h-48 md:w-48 md:h-72 bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl z-20 hidden flex items-center justify-center">
+      <video id="pip-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+      <div id="pip-avatar-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 hidden">
+        <img id="pip-placeholder-img" src="" class="w-12 h-12 rounded-full object-cover border-2 border-slate-700 mb-1">
+        <span id="pip-placeholder-name" class="text-[10px] text-slate-300 font-medium">Вы</span>
+      </div>
+      <!-- Switch camera button inside PIP container -->
+      <button id="switch-camera-btn" onclick="switchCameraSource()" class="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white flex items-center justify-center text-xs transition shadow-md hidden" title="Переключить камеру">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+
+    <!-- Top info (Audio mode info) -->
+    <div id="call-audio-mode-info" class="text-center z-10 pt-6">
       <p id="call-status-label" class="text-sm font-semibold tracking-widest uppercase text-blue-400 mb-1">Звонок...</p>
       <div id="call-timer" class="text-xs text-slate-400 hidden font-mono">00:00</div>
     </div>
 
-    <!-- Center profile info -->
-    <div class="flex flex-col items-center space-y-4 z-10 my-auto">
+    <!-- Center profile info (Audio mode avatar) -->
+    <div id="call-audio-profile-info" class="flex flex-col items-center space-y-4 z-10 my-auto">
       <div class="relative">
         <img id="call-avatar" src="https://placehold.co/150x150/3b82f6/ffffff?text=U" class="w-32 h-32 rounded-full object-cover border-4 border-blue-500/40 shadow-2xl animate-pulse">
         <div id="call-pulse-ring" class="absolute inset-0 rounded-full border-4 border-blue-500/30 animate-ping pointer-events-none"></div>
       </div>
       <div class="text-center">
         <h2 id="call-name" class="text-2xl font-bold text-white tracking-wide">Имя собеседника</h2>
-        <p id="call-subtitle" class="text-sm text-slate-400 mt-1">Входящий аудиовызов</p>
+        <p id="call-subtitle" class="text-sm text-slate-400 mt-1">Входящий вызов</p>
       </div>
     </div>
 
     <!-- Bottom Controls -->
-    <div class="w-full max-w-sm flex items-center justify-around z-10 pb-6">
-      <!-- Mute mic button (visible when connected) -->
-      <button id="call-btn-mute" onclick="toggleMuteMic()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg hidden" title="Выключить микрофон">
+    <div class="w-full max-w-md flex items-center justify-around z-30 pb-4 md:pb-6 bg-slate-950/40 backdrop-blur-md rounded-2xl p-3">
+      <!-- Mute mic button -->
+      <button id="call-btn-mute" onclick="toggleMuteMic()" class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg md:text-xl transition shadow-lg hidden" title="Микрофон">
         <i id="call-icon-mute" class="fa-solid fa-microphone"></i>
       </button>
 
+      <!-- Camera toggle button -->
+      <button id="call-btn-cam" onclick="toggleCamera()" class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg md:text-xl transition shadow-lg hidden" title="Камера">
+        <i id="call-icon-cam" class="fa-solid fa-video-slash"></i>
+      </button>
+
       <!-- Decline / Hang up button -->
-      <button onclick="hangUpCall()" class="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-2xl transition shadow-xl shadow-red-600/30 active:scale-95" title="Сбросить">
+      <button onclick="hangUpCall()" class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-xl md:text-2xl transition shadow-xl shadow-red-600/30 active:scale-95" title="Сбросить">
         <i class="fa-solid fa-phone-slash"></i>
       </button>
 
-      <!-- Speaker button (visible when connected) -->
-      <button id="call-btn-speaker" onclick="toggleSpeaker()" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg hidden" title="Динамик">
+      <!-- Speaker button -->
+      <button id="call-btn-speaker" onclick="toggleSpeaker()" class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg md:text-xl transition shadow-lg hidden" title="Динамик">
         <i id="call-icon-speaker" class="fa-solid fa-volume-high"></i>
       </button>
 
-      <!-- Answer button (visible on incoming call) -->
-      <button id="call-btn-answer" onclick="answerIncomingCall()" class="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-2xl transition shadow-xl shadow-emerald-600/30 active:scale-95 hidden" title="Ответить">
+      <!-- Answer button -->
+      <button id="call-btn-answer" onclick="answerIncomingCall()" class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-xl md:text-2xl transition shadow-xl shadow-emerald-600/30 active:scale-95 hidden" title="Ответить">
         <i class="fa-solid fa-phone"></i>
       </button>
     </div>
@@ -439,7 +463,7 @@
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
       getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, 
-      query, where, onSnapshot, serverTimestamp, updateDoc, deleteDoc, setLogLevel
+      query, where, onSnapshot, serverTimestamp, updateDoc, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -471,7 +495,6 @@
 
     let activeContextMenuTarget = null;
     let actionState = null;
-    let longPressTimer = null;
     let newAvatarUrlTemp = null;
 
     // WebRTC & Call Variables
@@ -483,6 +506,8 @@
     let callSeconds = 0;
     let isMicMuted = false;
     let isSpeakerOn = true;
+    let isCameraOn = false;
+    let currentFacingMode = 'user'; // 'user' (front) or 'environment' (back)
 
     const rtcConfig = {
       iceServers: [
@@ -530,6 +555,8 @@
     window.hangUpCall = hangUpCall;
     window.toggleMuteMic = toggleMuteMic;
     window.toggleSpeaker = toggleSpeaker;
+    window.toggleCamera = toggleCamera;
+    window.switchCameraSource = switchCameraSource;
 
     onAuthStateChanged(auth, async (user) => {
       const authOverlay = document.getElementById('auth-overlay');
@@ -603,13 +630,11 @@
       );
 
       globalCallUnsubscribe = onSnapshot(callsQuery, async (snapshot) => {
-        // Проверяем, есть ли активные входящие со статусом ringing
         const activeIncomingCall = snapshot.docs.find(docSnap => docSnap.data().callerId !== uid);
 
         if (activeIncomingCall) {
           const callData = activeIncomingCall.data();
 
-          // Если мы еще не в звонке, показываем входящий вызов
           if (callState === 'idle') {
             currentCallId = activeIncomingCall.id;
             callState = 'ringing_incoming';
@@ -626,9 +651,7 @@
             showIncomingCallUI(callerName, callerPhoto);
           }
         } else {
-          // Закрываем окно только если звонок действительно отменился, а не просто обновились кандидаты
           if (callState === 'ringing_incoming') {
-            // Проверим текущий документ звонка, вдруг он перешел в connecting/ended
             if (currentCallId) {
               const checkSnap = await getDoc(doc(db, 'calls', currentCallId));
               if (!checkSnap.exists() || checkSnap.data().status === 'ended' || checkSnap.data().status === 'declined') {
@@ -651,9 +674,9 @@
         callState = 'ringing_outgoing';
         showOutgoingCallUI(activePartner.displayName, activePartner.photoURL);
 
+        // Изначально запрашиваем только аудио (камера выключена по умолчанию)
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 
-        // Create call document in Firestore
         const callRef = await addDoc(collection(db, 'calls'), {
           callerId: currentUser.uid,
           callerName: currentUserProfileData?.displayName || 'Пользователь',
@@ -665,10 +688,8 @@
         currentCallId = callRef.id;
 
         createPeerConnection();
-        // Add local audio track
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-        // Create WebRTC Offer
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
 
@@ -679,7 +700,6 @@
 
         updateCallStatusText('Соединение...');
 
-        // Listen for remote answer & ICE candidates
         onSnapshot(callRef, async (docSnap) => {
           if (!docSnap.exists()) {
             hangUpCall();
@@ -734,11 +754,9 @@
 
         const callData = callSnap.data();
 
-        // Set remote description (Offer)
         const remoteDesc = new RTCSessionDescription(callData.offer);
         await peerConnection.setRemoteDescription(remoteDesc);
 
-        // Create Answer
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
 
@@ -747,7 +765,6 @@
           status: 'connected'
         });
 
-        // Listen for caller ICE candidates or hangup
         onSnapshot(callRef, async (docSnap) => {
           if (!docSnap.exists()) {
             hangUpCall();
@@ -788,20 +805,246 @@
       };
 
       peerConnection.ontrack = (event) => {
+        const stream = event.streams[0];
+        
+        // Проверяем, есть ли видео в удаленном потоке
+        const videoTracks = stream.getVideoTracks();
+        if (videoTracks.length > 0 && videoTracks[0].enabled) {
+          showRemoteVideo(stream);
+        } else {
+          hideRemoteVideo();
+        }
+
+        // Также связываем аудиопоток
         const remoteAudio = document.getElementById('remote-audio');
-        remoteAudio.srcObject = event.streams[0];
+        remoteAudio.srcObject = stream;
         remoteAudio.play().catch(e => console.error("Audio play error:", e));
       };
 
       peerConnection.onconnectionstatechange = () => {
         if (peerConnection.connectionState === 'connected') {
           updateCallStatusText('Разговор');
-          document.getElementById('call-pulse-ring').classList.remove('animate-ping');
+          document.getElementById('call-pulse-ring')?.classList.remove('animate-ping');
         } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
           updateCallStatusText('Ошибка соединения');
           setTimeout(() => hangUpCall(), 2000);
         }
       };
+    }
+
+    // ================= CAMERA & VIDEO SWITCHING LOGIC =================
+    async function toggleCamera() {
+      try {
+        if (!isCameraOn) {
+          // Включаем камеру
+          const videoStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: false, 
+            video: { facingMode: currentFacingMode } 
+          });
+          const videoTrack = videoStream.getVideoTracks()[0];
+
+          // Добавляем видео трек в PeerConnection
+          if (peerConnection) {
+            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) {
+              await sender.replaceTrack(videoTrack);
+            } else {
+              peerConnection.addTrack(videoTrack, localStream);
+            }
+          }
+
+          // Добавляем видео трек к нашему локальному потоку
+          localStream.addTrack(videoTrack);
+          isCameraOn = true;
+
+          updateCameraUIState();
+          showLocalPiPVideo();
+        } else {
+          // Выключаем камеру
+          const videoTracks = localStream.getVideoTracks();
+          videoTracks.forEach(track => {
+            track.stop();
+            localStream.removeTrack(track);
+            if (peerConnection) {
+              const sender = peerConnection.getSenders().find(s => s.track === track);
+              if (sender) sender.replaceTrack(null);
+            }
+          });
+          isCameraOn = false;
+
+          updateCameraUIState();
+          hideLocalPiPVideo();
+        }
+      } catch (err) {
+        console.error("Camera Toggle Error:", err);
+        alert("Не удалось получить доступ к камере.");
+      }
+    }
+
+    async function switchCameraSource() {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      if (isCameraOn) {
+        // Переподключаем камеру с новым facingMode
+        const oldVideoTracks = localStream.getVideoTracks();
+        oldVideoTracks.forEach(t => t.stop());
+
+        const newVideoStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: false, 
+          video: { facingMode: currentFacingMode } 
+        });
+        const newVideoTrack = newVideoStream.getVideoTracks()[0];
+
+        oldVideoTracks.forEach(t => localStream.removeTrack(t));
+        localStream.addTrack(newVideoTrack);
+
+        if (peerConnection) {
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) await sender.replaceTrack(newVideoTrack);
+        }
+        showLocalPiPVideo();
+      }
+    }
+
+    function updateCameraUIState() {
+      const camBtn = document.getElementById('call-btn-cam');
+      const camIcon = document.getElementById('call-icon-cam');
+      if (isCameraOn) {
+        camBtn.className = 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg md:text-xl transition shadow-lg';
+        camIcon.className = 'fa-solid fa-video';
+      } else {
+        camBtn.className = 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg md:text-xl transition shadow-lg';
+        camIcon.className = 'fa-solid fa-video-slash';
+      }
+    }
+
+    function showLocalPiPVideo() {
+      const pipContainer = document.getElementById('pip-video-container');
+      const pipVideo = document.getElementById('pip-video');
+      const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
+      const switchBtn = document.getElementById('switch-camera-btn');
+
+      pipVideo.srcObject = localStream;
+      pipVideo.classList.remove('hidden');
+      pipPlaceholder.classList.add('hidden');
+      switchBtn.classList.remove('hidden');
+      pipContainer.classList.remove('hidden');
+
+      // Регулируем расположение в зависимости от того, есть ли видео у собеседника
+      adjustVideoLayout();
+    }
+
+    function hideLocalPiPVideo() {
+      const pipContainer = document.getElementById('pip-video-container');
+      const switchBtn = document.getElementById('switch-camera-btn');
+      switchBtn.classList.add('hidden');
+      
+      // Если у собеседника тоже нет видео, скрываем PiP полностью
+      const remoteVideo = document.getElementById('fullscreen-video');
+      if (remoteVideo.paused || !remoteVideo.srcObject) {
+        pipContainer.classList.add('hidden');
+      } else {
+        // Если у собеседника есть видео, мы показываем себя в маленьком окошке
+        const pipVideo = document.getElementById('pip-video');
+        const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
+        pipVideo.classList.add('hidden');
+        pipPlaceholder.classList.remove('hidden');
+        document.getElementById('pip-placeholder-img').src = currentUserProfileData?.photoURL || '';
+      }
+      adjustVideoLayout();
+    }
+
+    function showRemoteVideo(stream) {
+      const fullVideoContainer = document.getElementById('fullscreen-video-container');
+      const remoteVideo = document.getElementById('fullscreen-video');
+      const fullPlaceholder = document.getElementById('fullscreen-avatar-placeholder');
+
+      remoteVideo.srcObject = stream;
+      remoteVideo.classList.remove('hidden');
+      fullPlaceholder.classList.add('hidden');
+      fullVideoContainer.classList.remove('hidden');
+
+      // Скрываем аватарку аудиозвонка, так как идет видео
+      document.getElementById('call-audio-profile-info').classList.add('hidden');
+      document.getElementById('call-audio-mode-info').classList.add('hidden');
+
+      // Показываем PiP (если у нас включена камера, мы в маленьком, собеседник на весь экран)
+      const pipContainer = document.getElementById('pip-video-container');
+      pipContainer.classList.remove('hidden');
+
+      if (!isCameraOn) {
+        const pipVideo = document.getElementById('pip-video');
+        const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
+        pipVideo.classList.add('hidden');
+        pipPlaceholder.classList.remove('hidden');
+        document.getElementById('pip-placeholder-img').src = activePartner?.photoURL || '';
+        document.getElementById('pip-placeholder-name').textContent = activePartner?.displayName || 'Собеседник';
+      }
+
+      adjustVideoLayout();
+    }
+
+    function hideRemoteVideo() {
+      const fullVideoContainer = document.getElementById('fullscreen-video-container');
+      fullVideoContainer.classList.add('hidden');
+
+      document.getElementById('call-audio-profile-info').classList.remove('hidden');
+      document.getElementById('call-audio-mode-info').classList.remove('hidden');
+
+      if (!isCameraOn) {
+        document.getElementById('pip-video-container').classList.add('hidden');
+      } else {
+        // Если у нас камера включена, а у собеседника выключена, то мы на весь экран (или в PiP, логика переключается)
+        showLocalPiPVideo();
+      }
+    }
+
+    // Умное переключение полноэкранного режима и маленького окошка
+    function adjustVideoLayout() {
+      const remoteVideo = document.getElementById('fullscreen-video');
+      const hasRemoteVideo = remoteVideo.srcObject && !remoteVideo.paused;
+
+      if (hasRemoteVideo && isCameraOn) {
+        // Оба включили камеру: Собеседник на весь экран, Мы маленькие в углу
+        document.getElementById('fullscreen-video-container').classList.remove('hidden');
+        document.getElementById('pip-video-container').classList.remove('hidden');
+        
+        const pipVideo = document.getElementById('pip-video');
+        const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
+        pipVideo.classList.remove('hidden');
+        pipPlaceholder.classList.add('hidden');
+        document.getElementById('switch-camera-btn').classList.remove('hidden');
+      } else if (hasRemoteVideo && !isCameraOn) {
+        // Только собеседник включил камеру: Собеседник на весь экран, мы отображаемся аватаром в углу
+        document.getElementById('fullscreen-video-container').classList.remove('hidden');
+        document.getElementById('pip-video-container').classList.remove('hidden');
+
+        const pipVideo = document.getElementById('pip-video');
+        const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
+        pipVideo.classList.add('hidden');
+        pipPlaceholder.classList.remove('hidden');
+        document.getElementById('pip-placeholder-img').src = currentUserProfileData?.photoURL || '';
+        document.getElementById('pip-placeholder-name').textContent = 'Вы';
+        document.getElementById('switch-camera-btn').classList.add('hidden');
+      } else if (!hasRemoteVideo && isCameraOn) {
+        // Только мы включили камеру: Мы на весь экран, собеседник отображается аватаром в углу
+        document.getElementById('fullscreen-video-container').classList.remove('hidden');
+        const remoteVideoEl = document.getElementById('fullscreen-video');
+        remoteVideoEl.classList.add('hidden');
+        document.getElementById('fullscreen-avatar-placeholder').classList.remove('hidden');
+        document.getElementById('fullscreen-placeholder-img').src = activePartner?.photoURL || '';
+        document.getElementById('fullscreen-placeholder-name').textContent = activePartner?.displayName || 'Собеседник';
+
+        document.getElementById('pip-video-container').classList.remove('hidden');
+        const pipVideo = document.getElementById('pip-video');
+        const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
+        pipVideo.classList.remove('hidden');
+        pipPlaceholder.classList.add('hidden');
+        document.getElementById('switch-camera-btn').classList.remove('hidden');
+      } else {
+        // Ни у кого нет камеры: Обычный аудиорежим
+        document.getElementById('fullscreen-video-container').classList.add('hidden');
+        document.getElementById('pip-video-container').classList.add('hidden');
+      }
     }
 
     async function hangUpCall() {
@@ -835,26 +1078,34 @@
       callState = 'idle';
       isMicMuted = false;
       isSpeakerOn = true;
+      isCameraOn = false;
 
       const overlay = document.getElementById('call-overlay');
       overlay.classList.add('hidden');
 
-      // Reset UI elements inside overlay
+      // Сброс элементов интерфейса звонка
       document.getElementById('call-btn-answer').classList.add('hidden');
       document.getElementById('call-btn-mute').classList.add('hidden');
+      document.getElementById('call-btn-cam').classList.add('hidden');
       document.getElementById('call-btn-speaker').classList.add('hidden');
       document.getElementById('call-timer').classList.add('hidden');
+      document.getElementById('fullscreen-video-container').classList.add('hidden');
+      document.getElementById('pip-video-container').classList.add('hidden');
+      document.getElementById('call-audio-profile-info').classList.remove('hidden');
+      document.getElementById('call-audio-mode-info').classList.remove('hidden');
+      updateCameraUIState();
     }
 
     // ================= CALL UI HELPERS =================
     function showIncomingCallUI(name, photo) {
       document.getElementById('call-name').textContent = name;
       document.getElementById('call-avatar').src = photo;
-      document.getElementById('call-status-label').textContent = 'Входящий аудиозвонок';
+      document.getElementById('call-status-label').textContent = 'Входящий вызов';
       document.getElementById('call-subtitle').textContent = 'Звонит';
 
       document.getElementById('call-btn-answer').classList.remove('hidden');
       document.getElementById('call-btn-mute').classList.add('hidden');
+      document.getElementById('call-btn-cam').classList.add('hidden');
       document.getElementById('call-btn-speaker').classList.add('hidden');
 
       document.getElementById('call-overlay').classList.remove('hidden');
@@ -864,10 +1115,11 @@
       document.getElementById('call-name').textContent = name;
       document.getElementById('call-avatar').src = photo;
       document.getElementById('call-status-label').textContent = 'Вызов...';
-      document.getElementById('call-subtitle').textContent = 'Исходящий аудиовызов';
+      document.getElementById('call-subtitle').textContent = 'Исходящий вызов';
 
       document.getElementById('call-btn-answer').classList.add('hidden');
       document.getElementById('call-btn-mute').classList.add('hidden');
+      document.getElementById('call-btn-cam').classList.add('hidden');
       document.getElementById('call-btn-speaker').classList.add('hidden');
 
       document.getElementById('call-overlay').classList.remove('hidden');
@@ -879,6 +1131,7 @@
 
       if (text === 'Разговор') {
         document.getElementById('call-btn-mute').classList.remove('hidden');
+        document.getElementById('call-btn-cam').classList.remove('hidden');
         document.getElementById('call-btn-speaker').classList.remove('hidden');
       }
     }
@@ -908,10 +1161,10 @@
       const muteBtn = document.getElementById('call-btn-mute');
       const muteIcon = document.getElementById('call-icon-mute');
       if (isMicMuted) {
-        muteBtn.className = 'w-14 h-14 rounded-full bg-red-600/30 text-red-400 border border-red-500/40 flex items-center justify-center text-xl transition shadow-lg';
+        muteBtn.className = 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-600/30 text-red-400 border border-red-500/40 flex items-center justify-center text-lg md:text-xl transition shadow-lg';
         muteIcon.className = 'fa-solid fa-microphone-slash';
       } else {
-        muteBtn.className = 'w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg';
+        muteBtn.className = 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg md:text-xl transition shadow-lg';
         muteIcon.className = 'fa-solid fa-microphone';
       }
     }
@@ -924,10 +1177,10 @@
       const speakerBtn = document.getElementById('call-btn-speaker');
       const speakerIcon = document.getElementById('call-icon-speaker');
       if (!isSpeakerOn) {
-        speakerBtn.className = 'w-14 h-14 rounded-full bg-red-600/30 text-red-400 border border-red-500/40 flex items-center justify-center text-xl transition shadow-lg';
+        speakerBtn.className = 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-red-600/30 text-red-400 border border-red-500/40 flex items-center justify-center text-lg md:text-xl transition shadow-lg';
         speakerIcon.className = 'fa-solid fa-volume-xmark';
       } else {
-        speakerBtn.className = 'w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-xl transition shadow-lg';
+        speakerBtn.className = 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-lg md:text-xl transition shadow-lg';
         speakerIcon.className = 'fa-solid fa-volume-high';
       }
     }
