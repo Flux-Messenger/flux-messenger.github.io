@@ -674,8 +674,13 @@
         callState = 'ringing_outgoing';
         showOutgoingCallUI(activePartner.displayName, activePartner.photoURL);
 
-        // Изначально запрашиваем только аудио (камера выключена по умолчанию)
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // Запрашиваем и аудио, и видео сразу (видеодорожка создана в сессии, но выключена)
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true, 
+          video: { facingMode: currentFacingMode } 
+        });
+        isCameraOn = false;
+        localStream.getVideoTracks().forEach(track => { track.enabled = false; });
 
         const callRef = await addDoc(collection(db, 'calls'), {
           callerId: currentUser.uid,
@@ -740,7 +745,12 @@
         callState = 'connecting';
         updateCallStatusText('Соединение...');
 
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true, 
+          video: { facingMode: currentFacingMode } 
+        });
+        isCameraOn = false;
+        localStream.getVideoTracks().forEach(track => { track.enabled = false; });
 
         createPeerConnection();
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -807,15 +817,24 @@
       peerConnection.ontrack = (event) => {
         const stream = event.streams[0];
         
-        // Проверяем, есть ли видео в удаленном потоке
+        // Отслеживаем включение/выключение видео в реальном времени
+        event.track.onunmute = () => {
+          if (event.track.kind === 'video') {
+            showRemoteVideo(stream);
+          }
+        };
+
+        event.track.onmute = () => {
+          if (event.track.kind === 'video') {
+            hideRemoteVideo();
+          }
+        };
+
         const videoTracks = stream.getVideoTracks();
         if (videoTracks.length > 0 && videoTracks[0].enabled) {
           showRemoteVideo(stream);
-        } else {
-          hideRemoteVideo();
         }
 
-        // Также связываем аудиопоток
         const remoteAudio = document.getElementById('remote-audio');
         remoteAudio.srcObject = stream;
         remoteAudio.play().catch(e => console.error("Audio play error:", e));
@@ -834,74 +853,48 @@
 
     // ================= CAMERA & VIDEO SWITCHING LOGIC =================
     async function toggleCamera() {
-      try {
-        if (!isCameraOn) {
-          // Включаем камеру
-          const videoStream = await navigator.mediaDevices.getUserMedia({ 
-            audio: false, 
-            video: { facingMode: currentFacingMode } 
-          });
-          const videoTrack = videoStream.getVideoTracks()[0];
+      if (!localStream) return;
+      
+      isCameraOn = !isCameraOn;
+      
+      // Просто включаем или выключаем видео-трек, который уже транслируется в WebRTC
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = isCameraOn;
+      });
 
-          // Добавляем видео трек в PeerConnection
-          if (peerConnection) {
-            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-            if (sender) {
-              await sender.replaceTrack(videoTrack);
-            } else {
-              peerConnection.addTrack(videoTrack, localStream);
-            }
-          }
+      updateCameraUIState();
 
-          // Добавляем видео трек к нашему локальному потоку
-          localStream.addTrack(videoTrack);
-          isCameraOn = true;
-
-          updateCameraUIState();
-          showLocalPiPVideo();
-        } else {
-          // Выключаем камеру
-          const videoTracks = localStream.getVideoTracks();
-          videoTracks.forEach(track => {
-            track.stop();
-            localStream.removeTrack(track);
-            if (peerConnection) {
-              const sender = peerConnection.getSenders().find(s => s.track === track);
-              if (sender) sender.replaceTrack(null);
-            }
-          });
-          isCameraOn = false;
-
-          updateCameraUIState();
-          hideLocalPiPVideo();
-        }
-      } catch (err) {
-        console.error("Camera Toggle Error:", err);
-        alert("Не удалось получить доступ к камере.");
+      if (isCameraOn) {
+        showLocalPiPVideo();
+      } else {
+        hideLocalPiPVideo();
       }
     }
 
     async function switchCameraSource() {
       currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-      if (isCameraOn) {
-        // Переподключаем камеру с новым facingMode
+      try {
         const oldVideoTracks = localStream.getVideoTracks();
-        oldVideoTracks.forEach(t => t.stop());
-
         const newVideoStream = await navigator.mediaDevices.getUserMedia({ 
           audio: false, 
           video: { facingMode: currentFacingMode } 
         });
         const newVideoTrack = newVideoStream.getVideoTracks()[0];
+        newVideoTrack.enabled = isCameraOn;
 
-        oldVideoTracks.forEach(t => localStream.removeTrack(t));
+        oldVideoTracks.forEach(t => {
+          t.stop();
+          localStream.removeTrack(t);
+        });
         localStream.addTrack(newVideoTrack);
 
         if (peerConnection) {
           const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
           if (sender) await sender.replaceTrack(newVideoTrack);
         }
-        showLocalPiPVideo();
+        if (isCameraOn) showLocalPiPVideo();
+      } catch (err) {
+        console.error("Switch camera error:", err);
       }
     }
 
@@ -929,7 +922,6 @@
       switchBtn.classList.remove('hidden');
       pipContainer.classList.remove('hidden');
 
-      // Регулируем расположение в зависимости от того, есть ли видео у собеседника
       adjustVideoLayout();
     }
 
@@ -938,12 +930,10 @@
       const switchBtn = document.getElementById('switch-camera-btn');
       switchBtn.classList.add('hidden');
       
-      // Если у собеседника тоже нет видео, скрываем PiP полностью
       const remoteVideo = document.getElementById('fullscreen-video');
-      if (remoteVideo.paused || !remoteVideo.srcObject) {
+      if (remoteVideo.paused || !remoteVideo.srcObject || remoteVideo.srcObject.getVideoTracks().every(t => !t.enabled)) {
         pipContainer.classList.add('hidden');
       } else {
-        // Если у собеседника есть видео, мы показываем себя в маленьком окошке
         const pipVideo = document.getElementById('pip-video');
         const pipPlaceholder = document.getElementById('pip-avatar-placeholder');
         pipVideo.classList.add('hidden');
@@ -963,11 +953,9 @@
       fullPlaceholder.classList.add('hidden');
       fullVideoContainer.classList.remove('hidden');
 
-      // Скрываем аватарку аудиозвонка, так как идет видео
       document.getElementById('call-audio-profile-info').classList.add('hidden');
       document.getElementById('call-audio-mode-info').classList.add('hidden');
 
-      // Показываем PiP (если у нас включена камера, мы в маленьком, собеседник на весь экран)
       const pipContainer = document.getElementById('pip-video-container');
       pipContainer.classList.remove('hidden');
 
@@ -993,18 +981,15 @@
       if (!isCameraOn) {
         document.getElementById('pip-video-container').classList.add('hidden');
       } else {
-        // Если у нас камера включена, а у собеседника выключена, то мы на весь экран (или в PiP, логика переключается)
         showLocalPiPVideo();
       }
     }
 
-    // Умное переключение полноэкранного режима и маленького окошка
     function adjustVideoLayout() {
       const remoteVideo = document.getElementById('fullscreen-video');
-      const hasRemoteVideo = remoteVideo.srcObject && !remoteVideo.paused;
+      const hasRemoteVideo = remoteVideo.srcObject && remoteVideo.srcObject.getVideoTracks().some(t => t.enabled);
 
       if (hasRemoteVideo && isCameraOn) {
-        // Оба включили камеру: Собеседник на весь экран, Мы маленькие в углу
         document.getElementById('fullscreen-video-container').classList.remove('hidden');
         document.getElementById('pip-video-container').classList.remove('hidden');
         
@@ -1014,7 +999,6 @@
         pipPlaceholder.classList.add('hidden');
         document.getElementById('switch-camera-btn').classList.remove('hidden');
       } else if (hasRemoteVideo && !isCameraOn) {
-        // Только собеседник включил камеру: Собеседник на весь экран, мы отображаемся аватаром в углу
         document.getElementById('fullscreen-video-container').classList.remove('hidden');
         document.getElementById('pip-video-container').classList.remove('hidden');
 
@@ -1026,10 +1010,8 @@
         document.getElementById('pip-placeholder-name').textContent = 'Вы';
         document.getElementById('switch-camera-btn').classList.add('hidden');
       } else if (!hasRemoteVideo && isCameraOn) {
-        // Только мы включили камеру: Мы на весь экран, собеседник отображается аватаром в углу
         document.getElementById('fullscreen-video-container').classList.remove('hidden');
-        const remoteVideoEl = document.getElementById('fullscreen-video');
-        remoteVideoEl.classList.add('hidden');
+        document.getElementById('fullscreen-video').classList.add('hidden');
         document.getElementById('fullscreen-avatar-placeholder').classList.remove('hidden');
         document.getElementById('fullscreen-placeholder-img').src = activePartner?.photoURL || '';
         document.getElementById('fullscreen-placeholder-name').textContent = activePartner?.displayName || 'Собеседник';
@@ -1041,7 +1023,6 @@
         pipPlaceholder.classList.add('hidden');
         document.getElementById('switch-camera-btn').classList.remove('hidden');
       } else {
-        // Ни у кого нет камеры: Обычный аудиорежим
         document.getElementById('fullscreen-video-container').classList.add('hidden');
         document.getElementById('pip-video-container').classList.add('hidden');
       }
@@ -1083,7 +1064,6 @@
       const overlay = document.getElementById('call-overlay');
       overlay.classList.add('hidden');
 
-      // Сброс элементов интерфейса звонка
       document.getElementById('call-btn-answer').classList.add('hidden');
       document.getElementById('call-btn-mute').classList.add('hidden');
       document.getElementById('call-btn-cam').classList.add('hidden');
