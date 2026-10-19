@@ -643,7 +643,6 @@
       if (!activeChatId || !currentUser) return;
       const now = Date.now();
       
-      // Отправляем статус "печатает" не чаще, чем раз в 2 секунды для оптимизации запросов
       if (now - lastTypingSent > 2000) {
         lastTypingSent = now;
         try {
@@ -698,7 +697,6 @@
         const hasReacted = usersForEmoji.includes(currentUser.uid);
 
         if (hasReacted) {
-          // Убираем реакцию
           const updatedUsers = usersForEmoji.filter(id => id !== currentUser.uid);
           if (updatedUsers.length === 0) {
             delete reactions[emoji];
@@ -706,7 +704,6 @@
             reactions[emoji] = updatedUsers;
           }
         } else {
-          // Добавляем реакцию (и убираем старую, если пользователь уже кликал другую, для удобства)
           for (const key in reactions) {
             reactions[key] = reactions[key].filter(id => id !== currentUser.uid);
             if (reactions[key].length === 0) delete reactions[key];
@@ -777,10 +774,18 @@
         callState = 'ringing_outgoing';
         showOutgoingCallUI(activePartner.displayName, activePartner.photoURL);
 
-        localStream = await navigator.mediaDevices.getUserMedia({ 
-          audio: true, 
-          video: { facingMode: currentFacingMode } 
-        });
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: true, 
+            video: { facingMode: currentFacingMode } 
+          });
+        } catch (mediaErr) {
+          console.error("Media permission denied or device not found:", mediaErr);
+          alert("Не удалось получить доступ к микрофону/камере. Проверьте разрешения браузера.");
+          resetCallState();
+          return;
+        }
+
         isCameraOn = false;
         localStream.getVideoTracks().forEach(track => { track.enabled = false; });
 
@@ -847,10 +852,18 @@
         callState = 'connecting';
         updateCallStatusText('Соединение...');
 
-        localStream = await navigator.mediaDevices.getUserMedia({ 
-          audio: true, 
-          video: { facingMode: currentFacingMode } 
-        });
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: true, 
+            video: { facingMode: currentFacingMode } 
+          });
+        } catch (mediaErr) {
+          console.error("Media permission denied:", mediaErr);
+          alert("Не удалось получить доступ к микрофону/камере.");
+          hangUpCall();
+          return;
+        }
+
         isCameraOn = false;
         localStream.getVideoTracks().forEach(track => { track.enabled = false; });
 
@@ -1566,9 +1579,29 @@
       messagesContainer.innerHTML = `<div class="text-center py-8 text-slate-500 text-sm"><i class="fa-solid fa-circle-notch fa-spin text-blue-500 text-lg mb-1"></i><p>Загрузка сообщений...</p></div>`;
 
       const msgsQuery = query(collection(db, 'chats', chatId, 'messages'));
-      messagesUnsubscribe = onSnapshot(msgsQuery, (snapshot) => {
+      messagesUnsubscribe = onSnapshot(msgsQuery, async (snapshot) => {
         const messages = [];
-        snapshot.forEach(docSnap => messages.push({ id: docSnap.id, ...docSnap.data() }));
+        const unreadMessageIds = [];
+
+        snapshot.forEach(docSnap => {
+          const msgData = docSnap.data();
+          messages.push({ id: docSnap.id, ...msgData });
+
+          if (msgData.senderId !== currentUser.uid && msgData.status !== 'read') {
+            unreadMessageIds.push(docSnap.id);
+          }
+        });
+
+        if (unreadMessageIds.length > 0) {
+          for (const msgId of unreadMessageIds) {
+            try {
+              await updateDoc(doc(db, 'chats', chatId, 'messages', msgId), { status: 'read' });
+            } catch (err) {
+              console.error("Error updating read status:", err);
+            }
+          }
+        }
+
         messages.sort((a, b) => (a.createdAt?.toDate().getTime() || 0) - (b.createdAt?.toDate().getTime() || 0));
 
         messagesContainer.innerHTML = '';
@@ -1585,7 +1618,6 @@
           let replyQuoteHtml = msg.replyTo ? `<div class="mb-2 p-2 rounded-xl bg-slate-900/60 border-l-4 border-blue-400 text-xs overflow-hidden"><div class="font-semibold text-blue-400 text-[11px] truncate">${escapeHtml(msg.replyTo.senderName)}</div><div class="text-slate-300 truncate text-[11px]">${escapeHtml(msg.replyTo.text || '[Картинка]')}</div></div>` : '';
           let contentHtml = msg.type === 'image' ? `<div class="overflow-hidden rounded-xl cursor-pointer mb-1" onclick="openImageModal('${msg.imageUrl}')"><img src="${msg.imageUrl}" class="max-w-xs max-h-60 rounded-xl object-cover"></div>` : `<p class="text-sm leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(msg.text)}</p>`;
 
-          // Рендеринг реакций под сообщением
           let reactionsHtml = '';
           if (msg.reactions && Object.keys(msg.reactions).length > 0) {
             reactionsHtml += `<div class="flex flex-wrap gap-1 mt-1.5 pt-1">`;
@@ -1623,7 +1655,6 @@
       });
     }
 
-    // Быстрое переключение реакции по клику на существующий бейдж
     window.quickToggleReaction = async function(msgId, emoji) {
       if (!activeChatId || !currentUser) return;
       const msgRef = doc(db, 'chats', activeChatId, 'messages', msgId);
@@ -1711,7 +1742,6 @@
       if (!text || !activeChatId) return;
       input.value = '';
       
-      // Сбрасываем статус печати при отправке
       try {
         await updateDoc(doc(db, 'chats', activeChatId), { [`typing.${currentUser.uid}`]: false });
       } catch(e){}
